@@ -1,4 +1,4 @@
-# time_tracker
+# Time Tracker to boost Productivity
 
 ## Overview
 
@@ -12,3 +12,7 @@ We are happy about any contributor and any issue that you can find so feel free 
 ## Recommendations
 
 If you have recommendations for future features also let us know. Just write us a message or open an issue if it is something bigger.
+
+### Credentials
+
+The Username for the superuser we created is admin with the password of admin. If you deploy this software to a server please change the password first. 
