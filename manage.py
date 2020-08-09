@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/home/alexander/Programmierung/Python/web_django/bin/python
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
