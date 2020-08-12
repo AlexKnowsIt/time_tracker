@@ -15,4 +15,4 @@ If you have recommendations for future features also let us know. Just write us 
 
 ### Credentials
 
-The Username for the superuser we created is admin with the password of admin. If you deploy this software to a server please change the password first. 
+The Username for the superuser we created is admin with the password of admin. If you deploy this software to a server please change the password first.
