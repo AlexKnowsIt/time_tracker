@@ -1,5 +1,35 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Hier kommt das Dashboard hin</h2>
+<h2>Dashboard zur Produktivitätssteigerung</h2>
+<div class="col-md-10">
+    <canvas id="myChart"></canvas>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+
+<script>
+    var ctx = document.getElementById('myChart').getContext('2d');
+var chart = new Chart(ctx, {
+    // The type of chart we want to create
+    type: 'bar',
+
+    // The data for our dataset
+    data: {
+        labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
+        datasets: [{
+            label: 'Monatsperformance',
+            backgroundColor: 'rgb(255, 99, 132)',
+            borderColor: 'rgb(55, 99, 20)',
+            data: [0, 10, 5, 2, 20, 30, 45]
+        }]
+    },
+
+    // Configuration options go here
+    options: {}
+});
+</script>
+
 {% endblock %}

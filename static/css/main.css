@@ -1,6 +1,6 @@
 
 .header h2 {
-    color: goldenrod;
+    color: forestgreen;
 }
 
 .header {
@@ -9,9 +9,13 @@
 
 
 p {
-    color: #59a74193;
+    color: #225513c7;
 }
 
 .middel {
     text-align: center;
+}
+
+.groß {
+    font-size: x-large;
 }
