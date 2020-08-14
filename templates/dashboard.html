@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Dashboard zur Produktivitätssteigerung</h2>
-<div class="col-md-10">
+<h2 class="middel">Dashboard zur Produktivitätssteigerung</h2>
+<div class="col-md-10 middel">
     <canvas id="myChart"></canvas>
 </div>
 
@@ -20,10 +20,10 @@ var chart = new Chart(ctx, {
     data: {
         labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
         datasets: [{
-            label: 'Monatsperformance',
-            backgroundColor: 'rgb(255, 99, 132)',
+            label: 'Zeit Deeplearning',
+            backgroundColor: 'rgb(102, 174, 0)',
             borderColor: 'rgb(55, 99, 20)',
-            data: [0, 10, 5, 2, 20, 30, 45]
+            data: [7, 10, 5, 2, 20, 30, 45]
         }]
     },
 
