@@ -6,6 +6,6 @@ from django.utils.timezone import now
 class Lerntag (models.Model):
     datum = models.DateField(default=now)
     notiz = models.TextField(blank=True, null=True)
-    zeit_lernen = models.DecimalField(decimal_places=2, max_digits=4)
-    zeit_freizeit = models.DecimalField(decimal_places=2, max_digits=4)
-    zeit_freundin = models.DecimalField(decimal_places=2, max_digits=4)
+    zeit_lernen = models.DecimalField(decimal_places=1, max_digits=3)
+    zeit_freizeit = models.DecimalField(decimal_places=1, max_digits=3)
+    zeit_freundin = models.DecimalField(decimal_places=1, max_digits=3)
