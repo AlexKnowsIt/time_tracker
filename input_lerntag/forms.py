@@ -6,8 +6,8 @@ class LerntagForm (forms.ModelForm):
         model = Lerntag
         fields = [
             'datum', 
-            'notiz', 
-            'zeit_lernen', 
+            'zeit_arbeit_mental',
+            'zeit_arbeit_shallow', 
             'zeit_freizeit',
-            'zeit_freundin'
+            'zeit_organisation'
         ]
