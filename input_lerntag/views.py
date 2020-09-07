@@ -4,7 +4,7 @@ from .models import Lerntag
 from .forms import LerntagForm
 
 # Create your views here.
-def input_web_view(request):
+def create_lerntag(request):
     my_form = LerntagForm
     context = {
         'form': my_form
