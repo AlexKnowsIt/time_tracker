@@ -5,7 +5,9 @@ from .forms import LerntagForm
 
 # Create your views here.
 def create_lerntag(request):
-    my_form = LerntagForm
+    my_form = LerntagForm(request.POST or None)
+    if my_form.is_valid():
+        my_form.save()
     context = {
         'form': my_form
     }
