@@ -24,14 +24,14 @@ urlpatterns = [
     path('', create_lerntag),
     # APIs
     # daily
-    path('api/day', zeiteinsatz_tag_view),
-    path('api/day-comp', zeiteinsatz_tag_istvssoll_view),
+    path('api/day/', zeiteinsatz_tag_view),
+    path('api/day-comp/', zeiteinsatz_tag_istvssoll_view),
     # weekly
-    path('api/week-work', zeiteinsatz_woche_arbeit_view),
-    path('api/week', zeiteinsatz_woche_view),
+    path('api/week-work/', zeiteinsatz_woche_arbeit_view),
+    path('api/week/', zeiteinsatz_woche_view),
     # Trends
-    path('api/month-work', zeiteinsatz_monat_arbeit_view),
-    path('api/month', zeiteinsatz_monat_view),
-    path('api/month-summary', zeiteinsatz_monat_combined_productivity_view),
-    path('api/month-progress', zeiteinsatz_monat_all_cat_view),
+    path('api/month-work/', zeiteinsatz_monat_arbeit_view),
+    path('api/month/', zeiteinsatz_monat_view),
+    path('api/month-summary/', zeiteinsatz_monat_combined_productivity_view),
+    path('api/month-progress/', zeiteinsatz_monat_all_cat_view),
 ]

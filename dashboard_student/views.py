@@ -18,8 +18,8 @@ def dashboard_data_view_lt(request):
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_tag_view(request):
     daten = {
-        '07.09.2020':20,
-        '08.09.2020':10
+        'labels': ['heute', 'gestern', 'vorgestern', 'Luki B-day'],
+        'daten': [1,2,3,35]
     }
     return JsonResponse(daten)
 
