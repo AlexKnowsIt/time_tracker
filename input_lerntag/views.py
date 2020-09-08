@@ -34,7 +34,17 @@ def zeiteinsatz_tag_view(request):
 
 # Barchart Ist Soll
 def zeiteinsatz_tag_istvssoll_view(request):
-    daten = {}
+    Lerntage = Lerntag.objects.all()
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+    day = Lerntage[len(Lerntage)-1]
+    daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
+    # for day in Lerntage:
+    #     Datume.append(day.datum)
+    #     Werte.append(float(day.zeit_arbeit_mental))
+    daten = {
+        'labels': label,
+        'daten': daten
+    }
     return JsonResponse(daten)
 
 

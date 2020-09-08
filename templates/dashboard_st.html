@@ -1,14 +1,26 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="middel">Dashboard zur Produktivitätssteigerung</h2>
+<h2 class="text-center">Dashboard zur Produktivitätssteigerung</h2>
 <div class="row">
+    <div class="col-md-12">
+        <h3>
+            Das sind die täglichen Dashboards
+        </h3>
+    </div>
     <div class="col-md-6">
         <canvas id="myChart"></canvas>
     </div>
     <div class="col-md-6">
         <canvas id="myChart2"></canvas>
-    </div>  
+    </div> 
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <h3>
+            Das sind die wöchentlichen Dashboards
+        </h3>
+    </div>
     <div class="col-md-6">
         <canvas id="myChart3"></canvas>
     </div>
@@ -16,6 +28,7 @@
         <canvas id="myChart4"></canvas>
     </div>
 </div>
+
     
 <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
 
@@ -25,6 +38,7 @@
     var defaultData = []
     var labels = []
     var endpoint = '/api/day/'
+    var bgcolor = ['#458A49', '#7ecd5b', '#53B7B7', '#DBCF58']
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -42,7 +56,7 @@
                 labels: labels,
                 datasets: [{
                     label: 'Zeit Deeplearning',
-                    backgroundColor: 'rgb(102, 174, 0)',
+                    backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
                     }]
