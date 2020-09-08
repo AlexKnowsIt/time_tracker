@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="middel">Dashboard zur Produktivitätssteigerung</h2>
+<div class="row">
+    <div class="col-md-6">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div class="col-md-6">
+        <canvas id="myChart2"></canvas>
+    </div>  
+    <div class="col-md-6">
+        <canvas id="myChart3"></canvas>
+    </div>
+    <div class="col-md-6">
+        <canvas id="myChart4"></canvas>
+    </div>
+</div>
+    
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+
+<script>
+    var ctx = document.getElementById('myChart').getContext('2d');
+var chart = new Chart(ctx, {
+    // The type of chart we want to create
+    type: 'bar',
+
+    // The data for our dataset
+    data: {
+        labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
+        datasets: [{
+            label: 'Zeit Deeplearning',
+            backgroundColor: 'rgb(102, 174, 0)',
+            borderColor: 'rgb(55, 99, 20)',
+            data: [7, 10, 5, 2, 20, 30, 45]
+        }]
+    },
+
+    // Configuration options go here
+    options: {}
+});
+</script>
+
+<script>
+    var ctx = document.getElementById('myChart2').getContext('2d');
+var chart = new Chart(ctx, {
+    // The type of chart we want to create
+    type: 'line',
+
+    // The data for our dataset
+    data: {
+        labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
+        datasets: [{
+            label: 'Zeit Deeplearning',
+            backgroundColor: 'rgb(102, 174, 0)',
+            borderColor: 'rgb(55, 99, 20)',
+            data: [7, 10, 5, 2, 20, 30, 45]
+        }]
+    },
+
+    // Configuration options go here
+    options: {}
+});
+</script>
+
+<script>
+    var ctx = document.getElementById('myChart3').getContext('2d');
+var chart = new Chart(ctx, {
+    // The type of chart we want to create
+    type: 'pie',
+
+    // The data for our dataset
+    data: {
+        labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
+        datasets: [{
+            label: 'Zeit Deeplearning',
+            backgroundColor: 'rgb(102, 174, 0)',
+            borderColor: 'rgb(55, 99, 20)',
+            data: [7, 10, 5, 2, 20, 30, 45]
+        }]
+    },
+
+    // Configuration options go here
+    options: {}
+});
+</script>
+
+<script>
+    var ctx = document.getElementById('myChart4').getContext('2d');
+var chart = new Chart(ctx, {
+    // The type of chart we want to create
+    type: 'radar',
+
+    // The data for our dataset
+    data: {
+        labels: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'],
+        datasets: [{
+            label: 'Zeit Deeplearning',
+            backgroundColor: 'rgb(102, 174, 0)',
+            borderColor: 'rgb(55, 99, 20)',
+            data: [7, 10, 5, 2, 20, 30, 45]
+        }]
+    },
+
+    // Configuration options go here
+    options: {}
+});
+</script>
+
+{% endblock %}

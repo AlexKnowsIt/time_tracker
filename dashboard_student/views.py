@@ -4,10 +4,10 @@ from django.http import HttpResponse
 # Create your views here.
 
 def dashboard_data_view_st(request):
-    return render (request, 'dashboard.html')
+    return render (request, 'dashboard_st.html')
 
 def dashboard_data_view_lt(request):
-    return render (request, 'dashboard.html')
+    return render (request, 'dashboard_lt.html')
 # 2 oder 3 Seiten --> täglich, wöchentlich, Trend
 
 # täglich
