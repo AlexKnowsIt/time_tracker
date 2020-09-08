@@ -20,17 +20,15 @@ def create_lerntag(request):
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_tag_view(request):
     Lerntage = Lerntag.objects.all()
-    i = 0
-    Datume = []
-    Werte = []
-    for day in Lerntage:
-        while i < 2:
-            Datume.append(day.datum)
-            Werte.append(float(day.zeit_arbeit_mental))
-            i += 1
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+    day = Lerntage[len(Lerntage)-1]
+    daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
+    # for day in Lerntage:
+    #     Datume.append(day.datum)
+    #     Werte.append(float(day.zeit_arbeit_mental))
     daten = {
-        'labels': Datume,
-        'daten': Werte
+        'labels': label,
+        'daten': daten
     }
     return JsonResponse(daten)
 
