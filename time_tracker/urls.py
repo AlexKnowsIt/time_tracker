@@ -15,8 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
-from input_lerntag.views import create_lerntag
+from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
+from input_lerntag.views import create_lerntag, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('dashboard-st/', dashboard_data_view_st),
