@@ -15,10 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from dashboard_student.views import dashboard_data_view
+from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
 from input_lerntag.views import create_lerntag
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('dashboard/', dashboard_data_view),
+    path('dashboard-st/', dashboard_data_view_st),
+    path('dashboard-lt/', dashboard_data_view_lt),
     path('', create_lerntag),
 ]
