@@ -23,9 +23,6 @@ def zeiteinsatz_tag_view(request):
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
     day = Lerntage[len(Lerntage)-1]
     daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
-    # for day in Lerntage:
-    #     Datume.append(day.datum)
-    #     Werte.append(float(day.zeit_arbeit_mental))
     daten = {
         'labels': label,
         'daten': daten
@@ -38,9 +35,6 @@ def zeiteinsatz_tag_istvssoll_view(request):
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
     day = Lerntage[len(Lerntage)-1]
     daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
-    # for day in Lerntage:
-    #     Datume.append(day.datum)
-    #     Werte.append(float(day.zeit_arbeit_mental))
     daten = {
         'labels': label,
         'daten': daten
@@ -52,12 +46,39 @@ def zeiteinsatz_tag_istvssoll_view(request):
 
 # Liniendiagramm Arbeit (DW SW) im Zeitverlauf
 def zeiteinsatz_woche_arbeit_view(request):
-    daten = {}
+    Lerntage = Lerntag.objects.all()[:7]
+    # label = ['Deepwork', 'Shallow Work']
+    mentale_arbeit = []
+    leichte_arbeit = []
+    datum = []
+    for day in Lerntage:
+        mentale_arbeit.append(float(day.zeit_arbeit_mental))
+        leichte_arbeit.append(float(day.zeit_arbeit_shallow))
+        datum.append(day.datum)
+    daten = {
+        'labels': datum,
+        'daten': mentale_arbeit,
+        'zweiteDaten': leichte_arbeit
+    }
     return JsonResponse(daten)
 
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_woche_view(request):
-    daten = {}
+    Lerntage = Lerntag.objects.all()[:7]
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+    mentale_arbeit = 0
+    leichte_arbeit = 0
+    freizeit = 0
+    organisation = 0
+    for day in Lerntage:
+        mentale_arbeit += float(day.zeit_arbeit_mental)
+        leichte_arbeit += float(day.zeit_arbeit_shallow)
+        freizeit += float(day.zeit_freizeit)
+        organisation += float(day.zeit_organisation)
+    daten = {
+        'labels': label,
+        'daten': [mentale_arbeit, leichte_arbeit, freizeit, organisation]
+    }
     return JsonResponse(daten)
 
 

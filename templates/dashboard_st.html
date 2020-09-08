@@ -89,7 +89,7 @@
                 labels: labels,
                 datasets: [{
                     label: 'Zeit Deeplearning',
-                    backgroundColor: 'rgb(102, 174, 0)',
+                    backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
                     }]
@@ -121,7 +121,7 @@
                 labels: labels,
                 datasets: [{
                     label: 'Zeit Deeplearning',
-                    backgroundColor: 'rgb(102, 174, 0)',
+                    backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
                     }]
@@ -135,6 +135,7 @@
     })
 
     var defaultData = []
+    var secdefaultData = []
     var labels = []
     var endpoint = '/api/week-work/'
     $.ajax({
@@ -143,6 +144,7 @@
         success: function (data){
             defaultData = data.daten
             labels = data.labels
+            secdefaultData = data.zweiteDaten
             var ctx = document.getElementById('myChart4').getContext('2d');
             var chart = new Chart(ctx, {
                 // The type of chart we want to create
@@ -153,9 +155,17 @@
                 labels: labels,
                 datasets: [{
                     label: 'Zeit Deeplearning',
-                    backgroundColor: 'rgb(102, 174, 0)',
-                    borderColor: 'rgb(55, 99, 20)',
+                    backgroundColor: '#458A49',
+                    borderColor: '#458A49',
                     data: defaultData,
+                    fill: false
+                    },
+                    {
+                    label: 'Zeit shallow work',
+                    backgroundColor: '#7ecd5b',
+                    borderColor: '#7ecd5b',
+                    data: secdefaultData,
+                    fill: false
                     }]
                 }
             })
