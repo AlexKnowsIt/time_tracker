@@ -15,11 +15,23 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
+from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
 from input_lerntag.views import create_lerntag
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('dashboard-st/', dashboard_data_view_st),
     path('dashboard-lt/', dashboard_data_view_lt),
     path('', create_lerntag),
+    # APIs
+    # daily
+    path('api/day', zeiteinsatz_tag_view),
+    path('api/day-comp', zeiteinsatz_tag_istvssoll_view),
+    # weekly
+    path('api/week-work', zeiteinsatz_woche_arbeit_view),
+    path('api/week', zeiteinsatz_woche_view),
+    # Trends
+    path('api/month-work', zeiteinsatz_monat_arbeit_view),
+    path('api/month', zeiteinsatz_monat_view),
+    path('api/month-summary', zeiteinsatz_monat_combined_productivity_view),
+    path('api/month-progress', zeiteinsatz_monat_all_cat_view),
 ]
