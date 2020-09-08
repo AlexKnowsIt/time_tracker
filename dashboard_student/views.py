@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 # Create your views here.
 
@@ -8,6 +8,7 @@ def dashboard_data_view_st(request):
 
 def dashboard_data_view_lt(request):
     return render (request, 'dashboard_lt.html')
+
 # 2 oder 3 Seiten --> täglich, wöchentlich, Trend
 
 # täglich
