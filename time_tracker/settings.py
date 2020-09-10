@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # Eigene Apps
     'input_lerntag',
     'dashboard_student',
+    'fullcalendar',
 ]
 
 MIDDLEWARE = [
