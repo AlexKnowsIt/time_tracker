@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<div class="col-md-5 header"><h2>Dateneingabe</h2></div>
+<div class="col-md-5 text-center"><h2>Dateneingabe</h2></div>
 
 <div class="row">
     <div class="col-md-5 text-center">
@@ -11,12 +11,13 @@
             <input type="submit" value="Save" class="btn btn-primary">
         </form>
     </div>
-    <div class="col-md-7 groß">
-        <p>Hier kommen Erläuterungen hin.</p>
-        <a href="/dashboard">
-            Zum Dashboard
-        </a>
-        
+    <div class="col-md-5">
+        <div class="row m-2">
+            <a class="btn btn-primary" href="/dashboard-st" role="button">Hier geht's zum Dashboard</a>
+        </div>
+        <div class="row m-2">
+            <a class="btn btn-primary" href="/dashboard-lt" role="button">Hier geht's zur Trendansicht</a>
+        </div>
     </div>
 </div>
 {% endblock %}
