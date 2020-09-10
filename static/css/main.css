@@ -22,7 +22,7 @@ body {
 }
 
 .cover-container {
-  max-width: 52em;
+  max-width: 55 em;
 }
 
 
@@ -50,4 +50,8 @@ body {
 .nav-masthead .active {
   color: #fff;
   border-bottom-color: #fff;
+}
+
+.kleiner-feld-abstand {
+  margin-bottom: 1em;
 }

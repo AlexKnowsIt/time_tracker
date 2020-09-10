@@ -26,14 +26,13 @@
     </div>
  
 <div class="row mt-5">
-    <div class="col-md-6 text-center border border-light rounded">
+    <div class="col-md-6 border border-light rounded">
         <h2>Dateneingabe</h2>
-        <div class="text-right">
+        <div>
             <form method="POST"> {% csrf_token %}
                 <p> {{ form.as_p }} </p>
-                
         </div>
-        <input type="submit" value="Save" class="btn btn-primary justify-content-center">
+        <input type="submit" value="Save" class="btn btn-primary justify-content-center mb-2">
             </form>
         
     </div>
