@@ -1,23 +1,72 @@
 {% extends 'base.html' %}
 
+{% block additional_css %}
+<style>
+    .bd-placeholder-img {
+      font-size: 1.125rem;
+      text-anchor: middle;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    @media (min-width: 768px) {
+      .bd-placeholder-img-lg {
+        font-size: 3.5rem;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
+<body class="d-flex h-100 text-center text-white bg-dark">
+  
+<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+<header class="mb-auto">
+  <div>
+    <h3 class="float-md-left mb-0">Productivity Booster</h3>
+    <nav class="nav nav-masthead justify-content-center float-md-right">
+      <a class="nav-link active" aria-current="page" href="/">Eingabe</a>
+      <a class="nav-link" href="/dashboard-st">Dashboard</a>
+      <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
+    </nav>
+  </div>
+</header>
 
-<div class="col-md-5 text-center"><h2>Dateneingabe</h2></div>
-
-<div class="row">
-    <div class="col-md-5 text-center">
-        <form method="POST"> {% csrf_token %}
-            <p> {{ form.as_p }} </p>
-            <input type="submit" value="Save" class="btn btn-primary">
-        </form>
+<main class="px-3">
+    <div class="mt-3">
+        <h1>The TimeTracker that <strong>boosts your productivity</strong>.</h1>
+        <h4>Work smart, not hard!</h4>
     </div>
-    <div class="col-md-5">
-        <div class="row m-2">
-            <a class="btn btn-primary" href="/dashboard-st" role="button">Hier geht's zum Dashboard</a>
+ 
+  
+
+<div class="row mt-5">
+    <div class="col-md-6 text-center border border-light rounded">
+        <h2>Dateneingabe</h2>
+        <div class="text-right">
+            <form method="POST"> {% csrf_token %}
+                <p> {{ form.as_p }} </p>
+                
         </div>
+        <input type="submit" value="Save" class="btn btn-primary justify-content-center">
+            </form>
+        
+    </div>
+    <div class="col-md-6">
         <div class="row m-2">
-            <a class="btn btn-primary" href="/dashboard-lt" role="button">Hier geht's zur Trendansicht</a>
+            <a class="btn btn-warning align-middle mb-2" href="/calendar" role="button">Hier geht's zur Planung</a>
+            <a class="btn btn-info mb-2" href="/dashboard-st" role="button">Hier geht's zum Dashboard</a>
+                <a class="btn btn-info mb-2" href="/dashboard-lt" role="button">Hier geht's zur Trendansicht</a>
         </div>
+                
+        
     </div>
 </div>
+</main>
+
+
+
+
 {% endblock %}
