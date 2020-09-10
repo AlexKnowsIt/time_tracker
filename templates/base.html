@@ -11,12 +11,28 @@
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}"/>
+  <style>
+    .bd-placeholder-img {
+      font-size: 1.125rem;
+      text-anchor: middle;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    @media (min-width: 768px) {
+      .bd-placeholder-img-lg {
+        font-size: 3.5rem;
+      }
+    }
+  </style>
   {% block additional_css %}
   <!-- add additional css here -->
   {% endblock %}
 </head>
 
-<body>
+<body class="text-center text-white bg-dark">
     {% block content %}
     <!-- replace me -->
     {% endblock %}
