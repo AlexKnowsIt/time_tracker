@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from .models import Lerntag
 from .forms import LerntagForm
 
@@ -8,6 +8,7 @@ def create_lerntag(request):
     my_form = LerntagForm(request.POST or None)
     if my_form.is_valid():
         my_form.save()
+        return HttpResponseRedirect('')
     context = {
         'form': my_form
     }
