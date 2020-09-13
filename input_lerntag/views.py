@@ -48,13 +48,9 @@ def zeiteinsatz_tag_istvssoll_view(request):
 
 # Liniendiagramm Arbeit (DW SW) im Zeitverlauf
 def zeiteinsatz_woche_arbeit_view(request):
-    # Lerntage = Lerntag.objects.all()[:7]
     end_date = datetime.today()
     start_date = end_date - timedelta (days=7)
-    # end_date = date(2020, 9, 13)
-    # Lerntage = Lerntag.objects.filter(datum__range=(start_date.date(), end_date.date()))
     Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
-    # Lerntage = Lerntag.objects.filter(datum__year=2020)
     mentale_arbeit = []
     leichte_arbeit = []
     datum = []
@@ -71,8 +67,9 @@ def zeiteinsatz_woche_arbeit_view(request):
 
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_woche_view(request):
-    Lerntage = Lerntag.objects.all()[:7]
-    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+    end_date = datetime.today()
+    start_date = end_date - timedelta (days=7)
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
     mentale_arbeit = 0
     leichte_arbeit = 0
     freizeit = 0
