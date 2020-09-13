@@ -55,9 +55,14 @@ def zeiteinsatz_woche_arbeit_view(request):
     leichte_arbeit = []
     datum = []
     for day in Lerntage:
-        mentale_arbeit.append(float(day.zeit_arbeit_mental))
-        leichte_arbeit.append(float(day.zeit_arbeit_shallow))
-        datum.append(day.datum)
+        if day.datum not in datum:
+            datum.append(day.datum)
+            mentale_arbeit.append(float(day.zeit_arbeit_mental))
+            leichte_arbeit.append(float(day.zeit_arbeit_shallow))
+        else:
+            datums_index = datum.index(day.datum)
+            mentale_arbeit[datums_index] += float(day.zeit_arbeit_mental)
+            leichte_arbeit[datums_index] += float(day.zeit_arbeit_shallow)
     daten = {
         'labels': datum,
         'daten': mentale_arbeit,
