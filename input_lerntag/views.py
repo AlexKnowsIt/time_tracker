@@ -70,6 +70,7 @@ def zeiteinsatz_woche_view(request):
     end_date = datetime.today()
     start_date = end_date - timedelta (days=7)
     Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
     mentale_arbeit = 0
     leichte_arbeit = 0
     freizeit = 0
