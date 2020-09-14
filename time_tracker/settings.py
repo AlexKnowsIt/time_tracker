@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'input_lerntag',
     'dashboard_student',
     'fullcalendar',
+    # 'djangobower',
 ]
 
 MIDDLEWARE = [
@@ -124,3 +125,12 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static'), ] # steht nicht in der Doku braucht man aber trotzdem
 STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), "static") # hier genau so
+# STATICFILES_FINDERS = [
+#     'djangobower.finders.BowerFinder',
+# ]
+# BOWER_COMPONENTS_ROOT = os.path.join(os.path.dirname(BASE_DIR), "components")
+# BOWER_INSTALLED_APPS = (
+#     'jquery',
+#     'jquery-ui',
+#     'bootstrap'
+# )

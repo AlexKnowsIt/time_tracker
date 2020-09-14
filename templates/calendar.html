@@ -1,17 +1,47 @@
 {% extends 'base.html' %}
 
 {% block additional_css %}
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.3.2/main.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.3.2/main.min.css">
+{% include 'js_calendar.html' %}
+
 <script>
 
     document.addEventListener('DOMContentLoaded', function() {
       var calendarEl = document.getElementById('calendar');
-      var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridDay'
-      });
-      calendar.render();
-    });
+      var defaultData = []
+      var labels = []
+      var endpoint = '/api/calendar/'
+      var today = new Date();
+      var evente = []
+    $.ajax({
+        method: "GET",
+        url: endpoint,
+        success: function (data){
+          console.log(data)
+          for (var key in data){
+            evente.push(data[key] );
+            }
+            console.log(evente)
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridDay',
+            initialDate: today,
+            headerToolbar: {
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: evente
+          });
+
+          calendar.render();
+        },
+        error: function(error_data){
+            console.log('error')
+            console.log(error_data)
+        }
+    })
+
+});
 
   </script>
 {% endblock %}
