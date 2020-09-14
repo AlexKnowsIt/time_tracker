@@ -2,6 +2,7 @@
 
 {% block additional_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.3.2/main.min.css">
+<link href='https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.1/css/all.css' rel='stylesheet'>
 {% include 'js_calendar.html' %}
 
 <script>
@@ -42,6 +43,9 @@
         var calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: 'timeGridDay',
           initialDate: today,
+          themeSystem: 'bootstrap',
+          slotMinTime: '07:00:00',
+          editable: false,
           headerToolbar: {
             left: 'prev,next today',
             center: 'title',
@@ -91,7 +95,8 @@
       <h3 class="float-md-left mb-0">Productivity Booster</h3>
       <nav class="nav nav-masthead justify-content-center float-md-right">
         <a class="nav-link" aria-current="page" href="/">Eingabe</a>
-        <a class="nav-link active" href="/calendar">Planung</a>
+        <a class="nav-link" href="/planner">Planung</a>
+        <a class="nav-link active" href="/calendar">Kalendar</a>
         <a class="nav-link" href="/dashboard-st">Dashboard</a>
         <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
       </nav>

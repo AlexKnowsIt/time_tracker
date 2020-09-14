@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponseRedirect
 from .models import Lerntag
+from fullcalendar.models import Events
 from .forms import LerntagForm
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
+from datetime import date as Datum
 
 # Create your views here.
 def create_lerntag(request):
@@ -17,11 +19,11 @@ def create_lerntag(request):
 
 # 2 oder 3 Seiten --> täglich, wöchentlich, Trend
 
-# täglich
+# täglich (gestern)
 
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_tag_view(request):
-    Lerntage = Lerntag.objects.all()
+    Lerntage = Lerntag.objects.all() # gestern einfügen als Abgfrage
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
     day = Lerntage[len(Lerntage)-1]
     daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
@@ -33,13 +35,41 @@ def zeiteinsatz_tag_view(request):
 
 # Barchart Ist Soll
 def zeiteinsatz_tag_istvssoll_view(request):
-    Lerntage = Lerntag.objects.all()
+    # Lerntage = Lerntag.objects.filter(datum__date=datetime.today())
+    Lerntage = Lerntag.objects.all() # To-Do --> Use just objects from last day
+    Event = Events.objects.filter(start_date__date=datetime.today())
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
-    day = Lerntage[len(Lerntage)-1]
-    daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
+    arbeit_mental_ist = 0
+    arbeit_shallow_ist = 0
+    freizeit_ist = 0
+    organisation_ist = 0
+    for day in Lerntage:
+        arbeit_mental_ist += day.zeit_arbeit_mental
+        arbeit_shallow_ist += day.zeit_arbeit_shallow
+        freizeit_ist += day.zeit_freizeit
+        organisation_ist += day.zeit_organisation
+    zeit_ist = [float(arbeit_mental_ist), float(arbeit_shallow_ist), float(freizeit_ist), float(organisation_ist)]
+    arbeit_mental_soll = 0
+    arbeit_shallow_soll = 0
+    freizeit_soll = 0
+    organisation_soll = 0
+    for eve in Event:
+        time_delta = eve.end_date - eve.start_date
+        duration_sec = time_delta.total_seconds()
+        duration_hour = (duration_sec/3600)
+        if eve.event_type == 'DW':
+            arbeit_mental_soll += duration_hour
+        elif eve.event_type == 'SW':
+            arbeit_shallow_soll += duration_hour
+        elif eve.event_type == 'FZ':
+            freizeit_soll += duration_hour
+        elif eve.event_type == 'ORG':
+            organisation_soll += duration_hour
+    zeit_soll = [arbeit_mental_soll, arbeit_shallow_soll, freizeit_soll, organisation_soll]
     daten = {
         'labels': label,
-        'daten': daten
+        'zeit_ist': zeit_ist,
+        'zeit_soll': zeit_soll
     }
     return JsonResponse(daten)
 

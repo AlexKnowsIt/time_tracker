@@ -7,7 +7,8 @@
         <h3 class="float-md-left mb-0">Productivity Booster</h3>
         <nav class="nav nav-masthead justify-content-center float-md-right">
           <a class="nav-link" aria-current="page" href="/">Eingabe</a>
-          <a class="nav-link" href="/calendar">Planung</a>
+          <a class="nav-link" href="/planner">Planung</a>
+          <a class="nav-link" href="/calendar">Kalendar</a>  
           <a class="nav-link active" href="/dashboard-st">Dashboard</a>
           <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
         </nav>
@@ -67,7 +68,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Zeit Deepwork',
                     backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
@@ -82,14 +83,16 @@
     })
 
     
-    var defaultData = []
+    var zeit = []
+    var zeit_so = []
     var labels = []
     var endpoint = '/api/day-comp/'
     $.ajax({
         method: "GET",
         url: endpoint,
         success: function (data){
-            defaultData = data.daten
+            zeit = data.zeit_ist
+            zeit_so = data.zeit_soll
             labels = data.labels
             var ctx = document.getElementById('myChart2').getContext('2d');
             var chart = new Chart(ctx, {
@@ -100,10 +103,16 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Zeit Ist',
                     backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
-                    data: defaultData,
+                    data: zeit,
+                    },
+                    {
+                    label: 'Zeit Soll',
+                    backgroundColor: bgcolor,
+                    borderColor: 'rgb(105, 99, 120)',
+                    data: zeit_so,  
                     }]
                 }
             })
@@ -132,7 +141,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Zeit Deepwork',
                     backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
@@ -166,7 +175,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Zeit Deepwork',
                     backgroundColor: '#458A49',
                     borderColor: '#458A49',
                     data: defaultData,
