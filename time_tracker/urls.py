@@ -17,12 +17,13 @@ from django.contrib import admin
 from django.urls import path
 from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
 from input_lerntag.views import create_lerntag, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
-from fullcalendar.views import event_view, calendar_view
+from fullcalendar.views import event_view, calendar_view, create_planung
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('dashboard-st/', dashboard_data_view_st),
     path('dashboard-lt/', dashboard_data_view_lt),
     path('', create_lerntag),
+    path('planner/', create_planung),
     path('calendar/', event_view),
     # APIs
     # daily

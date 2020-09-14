@@ -13,7 +13,7 @@ def create_lerntag(request):
     context = {
         'form': my_form
     }
-    return render(request, 'input.html', context)
+    return render(request, 'input_tracker.html', context)
 
 # 2 oder 3 Seiten --> täglich, wöchentlich, Trend
 

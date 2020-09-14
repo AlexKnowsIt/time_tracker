@@ -5,45 +5,83 @@
 {% include 'js_calendar.html' %}
 
 <script>
-
-    document.addEventListener('DOMContentLoaded', function() {
-      var calendarEl = document.getElementById('calendar');
-      var defaultData = []
-      var labels = []
-      var endpoint = '/api/calendar/'
-      var today = new Date();
-      var evente = []
+  document.addEventListener('DOMContentLoaded', function () {
+    var calendarEl = document.getElementById('calendar');
+    var defaultData = []
+    var labels = []
+    var endpoint = '/api/calendar/'
+    var today = new Date();
+    var events_dw = []
+    var events_sw = []
+    var events_fz = []
+    var events_org = []
     $.ajax({
-        method: "GET",
-        url: endpoint,
-        success: function (data){
-          console.log(data)
-          for (var key in data){
-            evente.push(data[key] );
-            }
-            console.log(evente)
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridDay',
-            initialDate: today,
-            headerToolbar: {
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            },
-            events: evente
-          });
-
-          calendar.render();
-        },
-        error: function(error_data){
-            console.log('error')
-            console.log(error_data)
+      method: "GET",
+      url: endpoint,
+      success: function (data) {
+        console.log(data)
+        var dw = data['DW']
+        var sw = data['SW']
+        var fz = data['FZ']
+        var org = data['ORG']
+        console.log(dw)
+        for (var key in dw) {
+          events_dw.push(dw[key]);
         }
+        for (var key in sw) {
+          events_sw.push(sw[key]);
+        }
+        for (var key in fz) {
+          events_fz.push(fz[key]);
+        }
+        for (var key in org) {
+          events_org.push(org[key]);
+        }
+        console.log(events_dw)
+        console.log(events_sw)
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'timeGridDay',
+          initialDate: today,
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          },
+          eventSources: [{
+              events: events_dw,
+              color: '#458A49',
+              textColor: 'black'
+            },
+            {
+              events: events_sw,
+              color: '#7ecd5b',
+              textColor: 'black'
+            },
+            {
+              events: events_fz,
+              color: '#53B7B7',
+              textColor: 'black'
+            },
+            {
+              events: events_org,
+              color: '#DBCF58',
+              textColor: 'black'
+            },
+
+          ]
+
+        });
+
+        calendar.render();
+      },
+      error: function (error_data) {
+        console.log('error')
+        console.log(error_data)
+      }
     })
 
-});
-
-  </script>
+  });
+</script>
 {% endblock %}
 
 {% block content %}

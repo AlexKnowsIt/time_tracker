@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block additional_css %}
+
+{% endblock %}
+
+{% block content %}
+  
+<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+<header class="mb-auto">
+  <div>
+    <h3 class="float-md-left mb-0">Productivity Booster</h3>
+    <nav class="nav nav-masthead justify-content-center float-md-right">
+      <a class="nav-link active" aria-current="page" href="/">Eingabe</a>
+      <a class="nav-link" href="/calendar">Planung</a>
+      <a class="nav-link" href="/dashboard-st">Dashboard</a>
+      <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
+    </nav>
+  </div>
+</header>
+
+<main class="px-3">
+    <div class="mt-3">
+        <h1>The TimeTracker that <strong>boosts your productivity</strong>.</h1>
+        <h4>Work smart, not hard!</h4>
+    </div>
+ 
+    {% if user.is_authenticated %}
+
+<div class="row mt-5">
+    <div class="col-md-6 border border-light rounded">
+        <h2>Dateneingabe</h2>
+        <div>
+            <form method="POST"> {% csrf_token %}
+                <p> {{ form.as_p }} </p>
+        </div>
+        <input type="submit" value="Speichern" class="btn btn-primary justify-content-center mb-2 btn-block">
+            </form>
+        
+    </div>
+    <div class="col-md-6">
+        <div class="row m-2">
+            <a class="btn btn-info mb-2 disabled" href="/calendar" role="button">Hier geht's zur Planung</a>
+            <a class="btn btn-info mb-2" href="/dashboard-st" role="button">Hier geht's zum Dashboard</a>
+            <a class="btn btn-info mb-2 disabled" href="/dashboard-lt" role="button">Hier geht's zur Trendansicht</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<h3 class="text-warning">You are not logged in!</h3>
+{% endif %}
+</main>
+
+{% endblock %}
