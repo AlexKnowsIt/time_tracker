@@ -36,7 +36,9 @@ def zeiteinsatz_tag_view(request):
 # Barchart Ist Soll
 def zeiteinsatz_tag_istvssoll_view(request):
     # Lerntage = Lerntag.objects.filter(datum__date=datetime.today())
-    Lerntage = Lerntag.objects.all() # To-Do --> Use just objects from last day
+    end_date = datetime.today()
+    start_date = end_date
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
     Event = Events.objects.filter(start_date__date=datetime.today())
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
     arbeit_mental_ist = 0
@@ -126,12 +128,67 @@ def zeiteinsatz_woche_view(request):
 
 # letzte 30 Tage Arbeit vs 30 Tage davor
 def zeiteinsatz_monat_arbeit_view(request):
-    daten = {}
+    end_date = datetime.today()
+    start_date = end_date - timedelta (days=60)
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+    mentale_arbeit_30 = []
+    leichte_arbeit_30 = []
+    mentale_arbeit_60 = []
+    leichte_arbeit_60 = []
+    datum = []
+    count = 0
+    for day in Lerntage:
+        if count < 30:
+            if day.datum not in datum:
+                count += 1
+                datum.append(day.datum)
+                mentale_arbeit_30.append(float(day.zeit_arbeit_mental))
+                leichte_arbeit_30.append(float(day.zeit_arbeit_shallow))
+            else:
+                count += 1
+                datums_index = datum.index(day.datum)
+                mentale_arbeit_30[datums_index] += float(day.zeit_arbeit_mental)
+                leichte_arbeit_30[datums_index] += float(day.zeit_arbeit_shallow)
+        elif count < 60:
+            if day.datum not in datum:
+                count += 1
+                datum.append(day.datum)
+                mentale_arbeit_60.append(float(day.zeit_arbeit_mental))
+                leichte_arbeit_60.append(float(day.zeit_arbeit_shallow))
+            else:
+                count += 1
+                datums_index = datum.index(day.datum)
+                mentale_arbeit_60[datums_index] += float(day.zeit_arbeit_mental)
+                leichte_arbeit_60[datums_index] += float(day.zeit_arbeit_shallow)
+    daten = {
+        'labels': datum,
+        'mentaleArbeit30': mentale_arbeit_30,
+        'leichteArbeit30': leichte_arbeit_30,
+        'mentaleArbeit60': mentale_arbeit_60,
+        'leichteArbeit60': leichte_arbeit_60,
+    }
     return JsonResponse(daten)
+
 
 # Zeiteinsatz über Monat als Kuchendiagramm
 def zeiteinsatz_monat_view(request):
-    daten = {}
+    end_date = datetime.today()
+    start_date = end_date - timedelta (days=30)
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+    mentale_arbeit = 0
+    leichte_arbeit = 0
+    freizeit = 0
+    organisation = 0
+    for day in Lerntage:
+        mentale_arbeit += float(day.zeit_arbeit_mental)
+        leichte_arbeit += float(day.zeit_arbeit_shallow)
+        freizeit += float(day.zeit_freizeit)
+        organisation += float(day.zeit_organisation)
+    daten = {
+        'labels': label,
+        'daten': [mentale_arbeit, leichte_arbeit, freizeit, organisation]
+    }
     return JsonResponse(daten)
 
 # Produktivität, Wohlbefinden und Deepwork Zeit

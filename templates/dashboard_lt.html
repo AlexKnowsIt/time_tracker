@@ -39,7 +39,7 @@
     Chart.defaults.global.defaultFontColor = "#fff";
     var defaultData = []
     var labels = []
-    var endpoint = 'api/month/'
+    var endpoint = '/api/month/'
     var bgcolor = ['#458A49', '#7ecd5b', '#53B7B7', '#DBCF58']
     $.ajax({
         method: "GET",
@@ -47,17 +47,14 @@
         success: function (data){
             defaultData = data.daten
             labels = data.labels
-            console.log(defaultData, labels)
             var ctx = document.getElementById('myChart').getContext('2d');
             var chart = new Chart(ctx, {
-                // The type of chart we want to create
             type: 'pie',
 
-    // The data for our dataset
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Zeit Deepwork',
                     backgroundColor: bgcolor,
                     borderColor: 'rgb(55, 99, 20)',
                     data: defaultData,
@@ -74,7 +71,7 @@
     
     var defaultData = []
     var labels = []
-    var endpoint = 'api/month-summary/'
+    var endpoint = '/api/month-summary/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -83,10 +80,8 @@
             labels = data.labels
             var ctx = document.getElementById('myChart2').getContext('2d');
             var chart = new Chart(ctx, {
-                // The type of chart we want to create
             type: 'bar',
 
-    // The data for our dataset
             data: {
                 labels: labels,
                 datasets: [{
@@ -104,28 +99,55 @@
         }
     })
 
-    var defaultData = []
+    var DW_aktuell = []
+    var DW_Trend = []
+    var SW_Trend = []
+    var SW_aktuell = []
     var labels = []
-    var endpoint = 'api/month-work/'
+    var endpoint = '/api/month-work/'
     $.ajax({
         method: "GET",
         url: endpoint,
         success: function (data){
-            defaultData = data.daten
+            DW_aktuell = data.mentaleArbeit30
+            DW_Trend = data.mentaleArbeit60
+            SW_Trend = data.mentaleArbeit60
+            SW_aktuell = data.leichteArbeit30
             labels = data.labels
+            console.log(data)
             var ctx = document.getElementById('myChart3').getContext('2d');
             var chart = new Chart(ctx, {
-                // The type of chart we want to create
             type: 'line',
 
-    // The data for our dataset
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
-                    backgroundColor: bgcolor,
-                    borderColor: 'rgb(55, 99, 20)',
-                    data: defaultData,
+                    label: 'Zeit DeepWork aktuell',
+                    backgroundColor: '#458A49',
+                    borderColor: '#458A49',
+                    data: DW_aktuell,
+                    fill: false
+                    },
+                    {
+                    label: 'Zeit DeepWork Trend',
+                    backgroundColor: '#458A29',
+                    borderColor: '#458A29',
+                    data: DW_Trend,
+                    fill: false
+                    },
+                    {
+                    label: 'Zeit ShallowWork aktuell',
+                    backgroundColor: '#7ecd5b',
+                    borderColor: '#7ecd5b',
+                    data: SW_aktuell,
+                    fill: false
+                    },
+                    {
+                    label: 'Zeit ShallowWork Trend',
+                    backgroundColor: '#7ecd2b',
+                    borderColor: '#7ecd2b',
+                    data: SW_Trend,
+                    fill: false
                     }]
                 }
             })
@@ -139,7 +161,7 @@
     var defaultData = []
     var secdefaultData = []
     var labels = []
-    var endpoint = 'api/month-progress/'
+    var endpoint = '/api/month-progress/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -149,10 +171,8 @@
             secdefaultData = data.zweiteDaten
             var ctx = document.getElementById('myChart4').getContext('2d');
             var chart = new Chart(ctx, {
-                // The type of chart we want to create
             type: 'line',
 
-    // The data for our dataset
             data: {
                 labels: labels,
                 datasets: [{
