@@ -23,10 +23,20 @@ def create_lerntag(request):
 
 # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
 def zeiteinsatz_tag_view(request):
-    Lerntage = Lerntag.objects.all() # gestern einfügen als Abgfrage
+    end_date = datetime.today()
+    start_date = end_date
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
-    day = Lerntage[len(Lerntage)-1]
-    daten = [day.zeit_arbeit_mental, day.zeit_arbeit_shallow, day.zeit_freizeit, day.zeit_organisation]
+    arbeit_mental = 0
+    arbeit_shallow = 0
+    freizeit = 0
+    organisation = 0
+    for day in Lerntage:
+        arbeit_mental += day.zeit_arbeit_mental
+        arbeit_shallow += day.zeit_arbeit_shallow
+        freizeit += day.zeit_freizeit
+        organisation += day.zeit_organisation
+    daten = [arbeit_mental, arbeit_shallow, freizeit, organisation]
     daten = {
         'labels': label,
         'daten': daten
@@ -36,7 +46,7 @@ def zeiteinsatz_tag_view(request):
 # Barchart Ist Soll
 def zeiteinsatz_tag_istvssoll_view(request):
     # Lerntage = Lerntag.objects.filter(datum__date=datetime.today())
-    end_date = datetime.today()
+    end_date = Datum.today()
     start_date = end_date
     Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
     Event = Events.objects.filter(start_date__date=datetime.today())
