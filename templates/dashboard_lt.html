@@ -69,26 +69,28 @@
     })
 
     
-    var defaultData = []
+    var daten = []
     var labels = []
     var endpoint = '/api/month-summary/'
     $.ajax({
         method: "GET",
         url: endpoint,
         success: function (data){
-            defaultData = data.daten
+            for (var key in data) {
+                daten.push(data[key]);
+                }
             labels = data.labels
             var ctx = document.getElementById('myChart2').getContext('2d');
             var chart = new Chart(ctx, {
-            type: 'bar',
+            type: 'bubble',
 
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
-                    backgroundColor: bgcolor,
+                    label: 'DW in Abhängigkeit von HAP und PROD',
+                    backgroundColor: '#458A49',
                     borderColor: 'rgb(55, 99, 20)',
-                    data: defaultData,
+                    data: daten,
                     }]
                 }
             })
@@ -114,7 +116,6 @@
             SW_Trend = data.mentaleArbeit60
             SW_aktuell = data.leichteArbeit30
             labels = data.labels
-            console.log(data)
             var ctx = document.getElementById('myChart3').getContext('2d');
             var chart = new Chart(ctx, {
             type: 'line',
@@ -129,7 +130,7 @@
                     fill: false
                     },
                     {
-                    label: 'Zeit DeepWork Trend',
+                    label: 'Zeit DeepWork historisch',
                     backgroundColor: '#458A29',
                     borderColor: '#458A29',
                     data: DW_Trend,
@@ -143,7 +144,7 @@
                     fill: false
                     },
                     {
-                    label: 'Zeit ShallowWork Trend',
+                    label: 'Zeit ShallowWork historisch',
                     backgroundColor: '#7ecd2b',
                     borderColor: '#7ecd2b',
                     data: SW_Trend,
@@ -158,17 +159,21 @@
         }
     })
 
-    var defaultData = []
-    var secdefaultData = []
+    var DW = []
+    var SW = []
+    var FZ = []
+    var ORG = []
     var labels = []
     var endpoint = '/api/month-progress/'
     $.ajax({
         method: "GET",
         url: endpoint,
         success: function (data){
-            defaultData = data.daten
+            DW = data.DW
+            SW = data.SW
+            FZ = data.FZ
+            ORG = data.ORG
             labels = data.labels
-            secdefaultData = data.zweiteDaten
             var ctx = document.getElementById('myChart4').getContext('2d');
             var chart = new Chart(ctx, {
             type: 'line',
@@ -176,17 +181,31 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Zeit Deeplearning',
+                    label: 'Deepwork',
                     backgroundColor: '#458A49',
                     borderColor: '#458A49',
-                    data: defaultData,
+                    data: DW,
                     fill: false
                     },
                     {
-                    label: 'Zeit shallow work',
+                    label: 'Shallow Work',
                     backgroundColor: '#7ecd5b',
                     borderColor: '#7ecd5b',
-                    data: secdefaultData,
+                    data: SW,
+                    fill: false
+                    },
+                    {
+                    label: 'Freizeit',
+                    backgroundColor: '#53B7B7',
+                    borderColor: '#53B7B7',
+                    data: FZ,
+                    fill: false
+                    },
+                    {
+                    label: 'Organisation',
+                    backgroundColor: '#DBCF58',
+                    borderColor: '#DBCF58',
+                    data: ORG,
                     fill: false
                     }]
                 }

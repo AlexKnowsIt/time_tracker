@@ -193,10 +193,51 @@ def zeiteinsatz_monat_view(request):
 
 # Produktivität, Wohlbefinden und Deepwork Zeit
 def zeiteinsatz_monat_combined_productivity_view(request):
+    end_date = datetime.today()
+    start_date = end_date - timedelta (days=30)
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
     daten = {}
+    count = 0
+    for day in Lerntage:
+        DW = day.zeit_arbeit_mental
+        HAP = day.output_happiness
+        PROD = day.output_productivity
+        daten[count]={
+            'x': DW,
+            'y': HAP,
+            'r': PROD
+        }
+        count += 1
     return JsonResponse(daten)
 
 # Liniendiagramm alle Kategorien über Monat
 def zeiteinsatz_monat_all_cat_view(request):
-    daten = {}
+    end_date = datetime.today()
+    start_date = end_date - timedelta (days=30)
+    Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+    mentale_arbeit = []
+    leichte_arbeit = []
+    freizeit = []
+    organisation = []
+    datum = []
+    for day in Lerntage:
+        if day.datum not in datum:
+            datum.append(day.datum)
+            mentale_arbeit.append(float(day.zeit_arbeit_mental))
+            leichte_arbeit.append(float(day.zeit_arbeit_shallow))
+            freizeit.append(float(day.zeit_freizeit))
+            organisation.append(float(day.zeit_organisation))
+        else:
+            datums_index = datum.index(day.datum)
+            mentale_arbeit[datums_index] += float(day.zeit_arbeit_mental)
+            leichte_arbeit[datums_index] += float(day.zeit_arbeit_shallow)
+            freizeit[datums_index] += float(day.zeit_freizeit)
+            organisation[datums_index] += float(day.zeit_organisation)
+    daten = {
+        'labels': datum,
+        'DW': mentale_arbeit,
+        'SW': leichte_arbeit,
+        'FZ': freizeit,
+        'ORG': organisation
+    }
     return JsonResponse(daten)
