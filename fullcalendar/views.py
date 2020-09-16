@@ -34,14 +34,16 @@ def calendar_view(request):
     count_ORG = 0
     count_other = 0
     for Event in Evente:
+        identifier = Event.even_id
         start = Event.start_date
         ende = Event.end_date
         titel = Event.event_name
         kategorie = Event.event_type
         single_data = {'title': titel,
-                'start': start,
-                'end': ende,
-                'category': kategorie}
+                        'start': start,
+                        'end': ende,
+                        'id': identifier
+                        }
         if kategorie == 'DW':
             data_DW[count_DW]=single_data
             count_DW += 1

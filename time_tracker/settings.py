@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'input_lerntag',
     'dashboard_student',
     'fullcalendar',
+    'rest_framework',
     # 'djangobower',
 ]
 

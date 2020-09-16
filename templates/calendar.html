@@ -5,6 +5,28 @@
 <link href='https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.1/css/all.css' rel='stylesheet'>
 {% include 'js_calendar.html' %}
 
+
+{% endblock %}
+
+{% block content %}
+<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+  <header class="mb-auto">
+    <div>
+      <h3 class="float-md-left mb-0">Productivity Booster</h3>
+      <nav class="nav nav-masthead justify-content-center float-md-right">
+        <a class="nav-link" aria-current="page" href="/">Eingabe</a>
+        <a class="nav-link" href="/planner">Planung</a>
+        <a class="nav-link active" href="/calendar">Kalendar</a>
+        <a class="nav-link" href="/dashboard-st">Dashboard</a>
+        <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
+      </nav>
+    </div>
+  </header>
+</div>
+<div class="col-md-12 container my-2">
+  <div id='calendar'></div>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var calendarEl = document.getElementById('calendar');
@@ -20,12 +42,10 @@
       method: "GET",
       url: endpoint,
       success: function (data) {
-        console.log(data)
         var dw = data['DW']
         var sw = data['SW']
         var fz = data['FZ']
         var org = data['ORG']
-        console.log(dw)
         for (var key in dw) {
           events_dw.push(dw[key]);
         }
@@ -38,14 +58,12 @@
         for (var key in org) {
           events_org.push(org[key]);
         }
-        console.log(events_dw)
-        console.log(events_sw)
         var calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: 'timeGridDay',
           initialDate: today,
           themeSystem: 'bootstrap',
           slotMinTime: '07:00:00',
-          editable: false,
+          editable: true,
           headerToolbar: {
             left: 'prev,next today',
             center: 'title',
@@ -72,39 +90,47 @@
               textColor: 'black'
             },
 
-          ]
-
+          ],
+          eventDrop: function(info) {
+            // alert(info.event.title + " was dropped on " + info.event.start.toISOString());
+            console.log(info.event.title);
+            console.log(info.event.start);
+            console.log(info.event.id);
+            },
+          eventResize: function(info) {
+            // alert(info.event.title + " end is now " + info.event.end.toISOString());
+            console.log(info.event.title);
+            console.log(info.event.id);
+            console.log(info.event.end);
+            },
         });
 
         calendar.render();
       },
       error: function (error_data) {
-        console.log('error')
-        console.log(error_data)
+        console.error('error')
+        console.error(error_data)
       }
     })
 
   });
-</script>
-{% endblock %}
+  var sendpoint = None
+    $.ajax({
+      method: "POST",
+      url: sendpoint,
+      success: function (data) {
+      
+      
 
-{% block content %}
-<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
-  <header class="mb-auto">
-    <div>
-      <h3 class="float-md-left mb-0">Productivity Booster</h3>
-      <nav class="nav nav-masthead justify-content-center float-md-right">
-        <a class="nav-link" aria-current="page" href="/">Eingabe</a>
-        <a class="nav-link" href="/planner">Planung</a>
-        <a class="nav-link active" href="/calendar">Kalendar</a>
-        <a class="nav-link" href="/dashboard-st">Dashboard</a>
-        <a class="nav-link" href="/dashboard-lt">Trendanalyse</a>
-      </nav>
-    </div>
-  </header>
-</div>
-<div class="col-md-12 container my-2">
-  <div id='calendar'></div>
-</div>
+        calendar.render();
+      },
+      error: function (error_data) {
+        console.error('error')
+        console.error(error_data)
+      }
+    
+
+  });
+</script>
 
 {% endblock %}
