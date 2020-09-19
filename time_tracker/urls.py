@@ -17,7 +17,8 @@ from django.contrib import admin
 from django.urls import path
 from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
 from input_lerntag.views import create_lerntag, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
-from fullcalendar.views import event_view, calendar_view, create_planung
+from fullcalendar.views import event_view, create_planung, CalendarView, CalendarLookView, event_detail_view
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('dashboard-st/', dashboard_data_view_st),
@@ -38,5 +39,7 @@ urlpatterns = [
     path('api/month-summary/', zeiteinsatz_monat_combined_productivity_view),
     path('api/month-progress/', zeiteinsatz_monat_all_cat_view),
     # Calendar
-    path('api/calendar/', calendar_view)
+    # path('api/calendar/<int:id>/', CalendarView.as_view()),
+    path('api/calendar/<int:id>/', event_detail_view),
+    path('api/calendar/', CalendarLookView.as_view()),
 ]

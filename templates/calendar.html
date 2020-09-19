@@ -28,6 +28,23 @@
 </div>
 
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
   document.addEventListener('DOMContentLoaded', function () {
     var calendarEl = document.getElementById('calendar');
     var defaultData = []
@@ -93,15 +110,52 @@
           ],
           eventDrop: function(info) {
             // alert(info.event.title + " was dropped on " + info.event.start.toISOString());
-            console.log(info.event.title);
-            console.log(info.event.start);
-            console.log(info.event.id);
+            // var $crf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
+            var send_end = info.event.end.toISOString()
+            var send_begin = info.event.start.toISOString()
+            var data_send = {start_date: send_begin, end_date: send_end}
+            var send_data = JSON.stringify(data_send)
+              // console.log(send_data)
+            $.ajax({
+              method: "PUT",
+              url: endpoint + info.event.id + '/',
+              headers:{"X-CSRFToken": csrftoken},
+              data: send_data,
+              success: function (data) {
+                console.log('success')
+              
+
+              },
+              error: function (error_data) {
+                console.error('error')
+                console.error(error_data)
+              }
+            
+
+          });
             },
           eventResize: function(info) {
             // alert(info.event.title + " end is now " + info.event.end.toISOString());
-            console.log(info.event.title);
-            console.log(info.event.id);
-            console.log(info.event.end);
+            var send_data = info.event.end.toISOString()
+            var data_send = {end_date: send_data}
+            // console.log(send_data)
+            // var $crf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
+            $.ajax({
+              method: "PUT",
+              url: endpoint + info.event.id + '/',
+              headers:{"X-CSRFToken": csrftoken},
+              data: JSON.stringify(data_send),
+              success: function (data) {
+                console.log('success')
+
+              },
+              error: function (error_data) {
+                console.error('error')
+                console.error(error_data)
+              }
+            
+
+          });
             },
         });
 
@@ -114,23 +168,7 @@
     })
 
   });
-  var sendpoint = None
-    $.ajax({
-      method: "POST",
-      url: sendpoint,
-      success: function (data) {
-      
-      
 
-        calendar.render();
-      },
-      error: function (error_data) {
-        console.error('error')
-        console.error(error_data)
-      }
-    
-
-  });
 </script>
 
 {% endblock %}

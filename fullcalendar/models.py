@@ -1,5 +1,7 @@
 from django.db import models
 import datetime
+from django.contrib.auth.models import User
+
 # Create your models here.
 
 class Events(models.Model):
@@ -23,6 +25,7 @@ class Events(models.Model):
         choices=TIME_CHOICES,
         default=shallow_work,
     )
+    Besitzer = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.event_name
