@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from .models import Lerntag
 from fullcalendar.models import Events
 from .forms import LerntagForm
@@ -10,14 +10,20 @@ from rest_framework import viewsets
 from .serializer import LerntagSerializer
 
 class TrendView(APIView):
+    end_date = datetime.today()
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+
+    def get_time_frame(self, days):
+        start_date = self.end_date - timedelta (days=days)
+        Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
+
+        return Lerntage
 
     def get(self, request, dashboard):
 
         if dashboard == 'month-work':
             # letzte 30 Tage Arbeit vs 30 Tage davor
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=60)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+            Lerntage = self.get_time_frame(60)
             mentale_arbeit_30 = []
             leichte_arbeit_30 = []
             mentale_arbeit_60 = []
@@ -58,10 +64,7 @@ class TrendView(APIView):
 
         elif dashboard == 'month':
             # Zeiteinsatz über Monat als Kuchendiagramm
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=30)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
-            label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+            Lerntage = self.get_time_frame(30)
             mentale_arbeit = 0
             leichte_arbeit = 0
             freizeit = 0
@@ -72,16 +75,14 @@ class TrendView(APIView):
                 freizeit += float(day.zeit_freizeit)
                 organisation += float(day.zeit_organisation)
             daten = {
-                'labels': label,
+                'labels': self.label,
                 'daten': [mentale_arbeit, leichte_arbeit, freizeit, organisation]
             }
             return Response(daten)
 
         elif dashboard == 'month-summary':
             # Produktivität, Wohlbefinden und Deepwork Zeit
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=30)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+            Lerntage = self.get_time_frame(30)
             daten = {}
             count = 0
             for day in Lerntage:
@@ -98,9 +99,7 @@ class TrendView(APIView):
 
         elif dashboard == 'month-progress':
             # Liniendiagramm alle Kategorien über Monat
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=30)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+            Lerntage = self.get_time_frame(30)
             mentale_arbeit = []
             leichte_arbeit = []
             freizeit = []
@@ -132,14 +131,20 @@ class TrendView(APIView):
 
 class DashboardView(APIView):
     
+    end_date = datetime.today()
+    label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+
+    def get_time_frame(self, days):
+        start_date = self.end_date - timedelta (days=days)
+        Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
+        return Lerntage
+
     def get(self, request, dashboard):
 
         if dashboard == 'day':
             # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
-            end_date = datetime.today()
-            start_date = end_date
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
-            label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+            start_date = self.end_date
+            Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
             arbeit_mental = 0
             arbeit_shallow = 0
             freizeit = 0
@@ -151,18 +156,16 @@ class DashboardView(APIView):
                 organisation += day.zeit_organisation
             daten_reihe = [arbeit_mental, arbeit_shallow, freizeit, organisation]
             daten = {
-                'labels': label,
+                'labels': self.label,
                 'daten': daten_reihe
             }
             return Response(daten)
 
         elif dashboard == 'day-comp':
             # Barchart Ist Soll
-            end_date = Datum.today()
-            start_date = end_date
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+            start_date = self.end_date
+            Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
             Event = Events.objects.filter(start_date__date=datetime.today())
-            label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
             arbeit_mental_ist = 0
             arbeit_shallow_ist = 0
             freizeit_ist = 0
@@ -191,7 +194,7 @@ class DashboardView(APIView):
                     organisation_soll += duration_hour
             zeit_soll = [arbeit_mental_soll, arbeit_shallow_soll, freizeit_soll, organisation_soll]
             daten = {
-                'labels': label,
+                'labels': self.label,
                 'zeit_ist': zeit_ist,
                 'zeit_soll': zeit_soll
             }
@@ -199,9 +202,7 @@ class DashboardView(APIView):
 
         elif dashboard == 'week-work':
             # Liniendiagramm Arbeit (DW SW) im Zeitverlauf
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=7)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
+            Lerntage = self.get_time_frame(7)
             mentale_arbeit = []
             leichte_arbeit = []
             datum = []
@@ -223,10 +224,7 @@ class DashboardView(APIView):
 
         elif dashboard == 'week':
             # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
-            end_date = datetime.today()
-            start_date = end_date - timedelta (days=7)
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))    
-            label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
+            Lerntage = self.get_time_frame(7)
             mentale_arbeit = 0
             leichte_arbeit = 0
             freizeit = 0
@@ -237,7 +235,7 @@ class DashboardView(APIView):
                 freizeit += float(day.zeit_freizeit)
                 organisation += float(day.zeit_organisation)
             daten = {
-                'labels': label,
+                'labels': self.label,
                 'daten': [mentale_arbeit, leichte_arbeit, freizeit, organisation]
             }
             return Response(daten)
