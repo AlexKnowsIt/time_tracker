@@ -50,7 +50,7 @@
     Chart.defaults.global.defaultFontColor = "#fff";
     var defaultData = []
     var labels = []
-    var endpoint = '/api/day/'
+    var endpoint = '/api/dashboard/day/'
     var bgcolor = ['#458A49', '#7ecd5b', '#53B7B7', '#DBCF58']
     $.ajax({
         method: "GET",
@@ -84,7 +84,7 @@
     var zeit = []
     var zeit_so = []
     var labels = []
-    var endpoint = '/api/day-comp/'
+    var endpoint = '/api/dashboard/day-comp/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -121,7 +121,7 @@
 
     var defaultData = []
     var labels = []
-    var endpoint = '/api/week/'
+    var endpoint = '/api/dashboard/week/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -152,7 +152,7 @@
     var defaultData = []
     var secdefaultData = []
     var labels = []
-    var endpoint = '/api/week-work/'
+    var endpoint = '/api/dashboard/week-work/'
     $.ajax({
         method: "GET",
         url: endpoint,

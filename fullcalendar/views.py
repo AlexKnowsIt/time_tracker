@@ -92,15 +92,15 @@ def event_detail_view(request, id):
             return JsonResponse(serializer.data)
         return JsonResponse(serializer.errors, status=400)
 
-class CalendarView(APIView):
+class CalendarView(APIView): # Funktioniert nicht, gibt success Meldung aber es kommt nichts an
     def get_object(self, id):
         try:
             return Events.objects.get(even_id=id)
 
         except Events.DoesNotExist:
             return HttpResponse(status=status.HTTP_404_NOT_FOUND)
-  
-    def put(self, request, id):
+
+    def put(self, request, id, format=None):
         event = self.get_object(id)
         # data = JSONParser().parse(request)
         serializer = EventsSerializer(event, data=request.data)

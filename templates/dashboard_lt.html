@@ -39,7 +39,7 @@
     Chart.defaults.global.defaultFontColor = "#fff";
     var defaultData = []
     var labels = []
-    var endpoint = '/api/month/'
+    var endpoint = '/api/trend/month/'
     var bgcolor = ['#458A49', '#7ecd5b', '#53B7B7', '#DBCF58']
     $.ajax({
         method: "GET",
@@ -71,7 +71,7 @@
     
     var daten = []
     var labels = []
-    var endpoint = '/api/month-summary/'
+    var endpoint = '/api/trend/month-summary/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -106,7 +106,7 @@
     var SW_Trend = []
     var SW_aktuell = []
     var labels = []
-    var endpoint = '/api/month-work/'
+    var endpoint = '/api/trend/month-work/'
     $.ajax({
         method: "GET",
         url: endpoint,
@@ -164,7 +164,7 @@
     var FZ = []
     var ORG = []
     var labels = []
-    var endpoint = '/api/month-progress/'
+    var endpoint = '/api/trend/month-progress/'
     $.ajax({
         method: "GET",
         url: endpoint,

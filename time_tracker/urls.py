@@ -14,32 +14,28 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from dashboard_student.views import dashboard_data_view_st, dashboard_data_view_lt
-from input_lerntag.views import create_lerntag, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
+from input_lerntag.views import create_lerntag#, zeiteinsatz_tag_view, zeiteinsatz_tag_istvssoll_view, zeiteinsatz_woche_arbeit_view, zeiteinsatz_woche_view, zeiteinsatz_monat_view, zeiteinsatz_monat_arbeit_view, zeiteinsatz_monat_combined_productivity_view, zeiteinsatz_monat_all_cat_view
+from input_lerntag.views import DashboardView, TrendView
 from fullcalendar.views import event_view, create_planung, CalendarView, CalendarLookView, event_detail_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Views for websites
     path('dashboard-st/', dashboard_data_view_st),
     path('dashboard-lt/', dashboard_data_view_lt),
     path('', create_lerntag),
     path('planner/', create_planung),
     path('calendar/', event_view),
-    # APIs
-    # daily
-    path('api/day/', zeiteinsatz_tag_view),
-    path('api/day-comp/', zeiteinsatz_tag_istvssoll_view),
-    # weekly
-    path('api/week-work/', zeiteinsatz_woche_arbeit_view),
-    path('api/week/', zeiteinsatz_woche_view),
-    # Trends
-    path('api/month-work/', zeiteinsatz_monat_arbeit_view),
-    path('api/month/', zeiteinsatz_monat_view),
-    path('api/month-summary/', zeiteinsatz_monat_combined_productivity_view),
-    path('api/month-progress/', zeiteinsatz_monat_all_cat_view),
-    # Calendar
+
+    # Calendar vies
     # path('api/calendar/<int:id>/', CalendarView.as_view()),
     path('api/calendar/<int:id>/', event_detail_view),
     path('api/calendar/', CalendarLookView.as_view()),
+
+    # Dashboard views
+    path('api/dashboard/<str:dashboard>/', DashboardView.as_view()),
+    path('api/trend/<str:dashboard>/', TrendView.as_view()),
 ]
