@@ -143,8 +143,7 @@ class DashboardView(APIView):
 
         if dashboard == 'day':
             # Kuchendiagramm mit rel. und absoluten Werten für alle Kategorien
-            start_date = self.end_date
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
+            Lerntage = self.get_time_frame(1)
             arbeit_mental = 0
             arbeit_shallow = 0
             freizeit = 0
@@ -163,9 +162,8 @@ class DashboardView(APIView):
 
         elif dashboard == 'day-comp':
             # Barchart Ist Soll
-            start_date = self.end_date
-            Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
-            Event = Events.objects.filter(start_date__date=datetime.today())
+            Lerntage = self.get_time_frame(1)
+            Event = Events.objects.filter(start_date__date=datetime.today()) # To-Do: Hier gibt es eine Diskrepanz in der Zeitmessung der beiden Varianten
             arbeit_mental_ist = 0
             arbeit_shallow_ist = 0
             freizeit_ist = 0
