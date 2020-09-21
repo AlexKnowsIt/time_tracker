@@ -33,7 +33,8 @@ class CalendarLookView(APIView):
     def get(self, request):
         end_date = datetime.today() + timedelta (days=2)
         start_date = end_date - timedelta (days=7)
-        evente = Events.objects.filter(start_date__range=(start_date, end_date)).filter()
+        user = self.request.user
+        evente = Events.objects.filter(start_date__range=(start_date, end_date)).filter(owner=user)
         data_DW = {}
         data_SW = {}
         data_FZ = {}
@@ -80,7 +81,7 @@ class CalendarLookView(APIView):
 
 def event_detail_view(request, id):
     """
-    Retrieve, update or delete a code Events.
+    Retrieve, update or delete Events.
     """
     try:
         Event = Events.objects.get(even_id=id)
