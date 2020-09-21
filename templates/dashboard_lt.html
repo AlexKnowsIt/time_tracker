@@ -17,6 +17,8 @@
 </div>
 
 <h2 class="middel">Dashboard zur Produktivitätssteigerung</h2>
+{% if user.is_authenticated %}
+
 <div class="row">
     <div class="col-md-6">
         <canvas id="myChart"></canvas>
@@ -217,5 +219,9 @@
         }
     })
 </script>
+
+{% else %}
+<a href="/admin" class="btn btn-warning">You are not logged in!</a>
+{% endif %}
 
 {% endblock %}

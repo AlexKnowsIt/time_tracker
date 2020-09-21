@@ -23,9 +23,12 @@
     </div>
   </header>
 </div>
+{% if user.is_authenticated %}
+
 <div class="col-md-12 container my-2">
   <div id='calendar'></div>
 </div>
+
 
 <script>
 function getCookie(name) {
@@ -170,5 +173,8 @@ const csrftoken = getCookie('csrftoken');
   });
 
 </script>
+{% else %}
+<a href="/admin" class="btn btn-warning">You are not logged in!</a>
+{% endif %}
 
 {% endblock %}
