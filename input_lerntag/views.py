@@ -10,12 +10,12 @@ from rest_framework import viewsets
 from .serializer import LerntagSerializer
 
 class TrendView(APIView):
-    end_date = datetime.today()
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
 
     def get_time_frame(self, days):
-        start_date = self.end_date - timedelta (days=days)
-        Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
+        end_date = datetime.today()
+        start_date = end_date - timedelta (days=days)
+        Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
 
         return Lerntage
 
@@ -131,12 +131,12 @@ class TrendView(APIView):
 
 class DashboardView(APIView):
     
-    end_date = datetime.today()
     label = ['Deepwork', 'Shallow Work', 'Freizeit', 'Organisation']
 
     def get_time_frame(self, days):
-        start_date = self.end_date - timedelta (days=days)
-        Lerntage = Lerntag.objects.filter(datum__range=(start_date, self.end_date))
+        end_date = datetime.today()
+        start_date = end_date - timedelta (days=days)
+        Lerntage = Lerntag.objects.filter(datum__range=(start_date, end_date))
         return Lerntage
 
     def get(self, request, dashboard):
@@ -245,8 +245,16 @@ class DashboardView(APIView):
 def create_lerntag(request):
     my_form = LerntagForm(request.POST or None)
     if my_form.is_valid():
-        my_form.save()
-        request.user.lerntag(my_form)
+        zeit_arbeit_mental = my_form.cleaned_data["zeit_arbeit_mental"]
+        zeit_arbeit_shallow = my_form.cleaned_data["zeit_arbeit_shallow"]
+        zeit_freizeit = my_form.cleaned_data["zeit_freizeit"]
+        zeit_organisation = my_form.cleaned_data["zeit_organisation"]
+        output_productivity = my_form.cleaned_data["output_productivity"]
+        datum = my_form.cleaned_data["datum"]
+        output_happiness = my_form.cleaned_data["output_happiness"]
+        fs = Lerntag(zeit_arbeit_mental=zeit_arbeit_mental, zeit_arbeit_shallow=zeit_arbeit_shallow, output_productivity=output_productivity,zeit_freizeit=zeit_freizeit,zeit_organisation=zeit_organisation, datum=datum,output_happiness=output_happiness)
+        fs.save()
+        request.user.lerntag.add(fs)
         return HttpResponseRedirect('')
     context = {
         'form': my_form

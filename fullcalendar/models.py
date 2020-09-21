@@ -7,9 +7,9 @@ from django.contrib.auth.models import User
 class Events(models.Model):
     even_id = models.AutoField(primary_key=True)
     event_name = models.CharField(max_length=255,null=True,blank=True)
-    jetzt = datetime.datetime.now()
-    start_date = models.DateTimeField(null=True,blank=True, default=jetzt)
-    end_date = models.DateTimeField(null=True,blank=True, default=jetzt + datetime.timedelta(hours=2))
+    jetzt = datetime.datetime.now() + datetime.timedelta(hours=15)
+    start_date = models.DateTimeField(default=jetzt)
+    end_date = models.DateTimeField(default=jetzt + datetime.timedelta(hours=2))
     deep_work = 'DW'
     shallow_work = 'SW'
     freizeit = 'FZ'

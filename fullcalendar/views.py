@@ -13,8 +13,9 @@ import json
 def create_planung(request):
     my_form = KalenderForm(request.POST or None)
     if my_form.is_valid():
-        n = my_form.cleaned_data["event_name"]
-        fs = Events(event_name=n)
+        event_name = my_form.cleaned_data["event_name"]
+        event_type = my_form.cleaned_data["event_type"]
+        fs = Events(event_name=event_name, event_type=event_type)
         fs.save()
         request.user.evente.add(fs)
         return HttpResponseRedirect('')
