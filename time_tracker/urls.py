@@ -24,8 +24,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Views for websites
-    path('dashboard-st/', dashboard_data_view_st),
-    path('dashboard-lt/', dashboard_data_view_lt),
+    path('dashboard/', dashboard_data_view_st),
+    path('trend/', dashboard_data_view_lt),
     path('', create_lerntag),
     path('planner/', create_planung),
     path('calendar/', event_view),

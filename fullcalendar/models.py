@@ -25,7 +25,7 @@ class Events(models.Model):
         choices=TIME_CHOICES,
         default=shallow_work,
     )
-    Besitzer = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-
+    owner = models.ForeignKey(User, related_name='evente', on_delete=models.CASCADE, null=True)
+    
     def __str__(self):
         return self.event_name

@@ -12,4 +12,4 @@ class Lerntag (models.Model):
     zeit_organisation = models.DecimalField(decimal_places=1, max_digits=3, null=False, blank=False)
     output_productivity = models.PositiveIntegerField(null=True, blank=False)
     output_happiness = models.PositiveIntegerField(null=True, blank=False)
-    student = models.ForeignKey(User, on_delete=models.CASCADE, null=True) # wie bekomme ich Standardfeld auf current user?
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lerntag", null=True)

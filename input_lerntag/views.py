@@ -246,6 +246,7 @@ def create_lerntag(request):
     my_form = LerntagForm(request.POST or None)
     if my_form.is_valid():
         my_form.save()
+        request.user.lerntag(my_form)
         return HttpResponseRedirect('')
     context = {
         'form': my_form

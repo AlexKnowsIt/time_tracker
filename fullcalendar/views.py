@@ -13,7 +13,10 @@ import json
 def create_planung(request):
     my_form = KalenderForm(request.POST or None)
     if my_form.is_valid():
-        my_form.save()
+        n = my_form.cleaned_data["event_name"]
+        fs = Events(event_name=n)
+        fs.save()
+        request.user.evente.add(fs)
         return HttpResponseRedirect('')
     context = {
         'form': my_form
