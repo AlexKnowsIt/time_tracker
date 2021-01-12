@@ -10,6 +10,10 @@ We build this upon the idea of user customization in mind. With the implemented 
 As every django project just clone the repository and enable your hosting settings in wsgi. For development purposes after downloading use the commands
 python manage.py migrate followed by python manage.py runserver (or on Linux use python3 instead).
 
+## Docker
+
+Use the prebuild Docker-Image from DockerHub with the name alexg7/time_tracker.
+
 ## Contributing
 
 We are happy about any contributions and any issue that you can find so feel free to fork, open issues and help us by opening pull requests.
