@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Eintrag, Kategorie, Messung, Tagesbewertung
+from .models import Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
 
 
 @admin.register(Kategorie)
@@ -29,3 +29,10 @@ class TagesbewertungAdmin(admin.ModelAdmin):
     list_display = ["datum", "produktivitaet", "zufriedenheit", "schlaf_h", "nutzer"]
     list_filter = ["nutzer"]
     date_hierarchy = "datum"
+
+
+@admin.register(Planblock)
+class PlanblockAdmin(admin.ModelAdmin):
+    list_display = ["kategorie", "titel", "start", "ende", "nutzer"]
+    list_filter = ["nutzer", "kategorie__art"]
+    date_hierarchy = "start"

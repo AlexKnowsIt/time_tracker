@@ -111,3 +111,25 @@ class Tagesbewertung(models.Model):
         return (
             f"{self.datum}: Produktivität {self.produktivitaet}, Zufriedenheit {self.zufriedenheit}"
         )
+
+
+class Planblock(models.Model):
+    """Geplanter Zeitblock (Soll) für „Plan vs. Ist“. Überschneidungsfrei pro Nutzer."""
+
+    nutzer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    kategorie = models.ForeignKey(Kategorie, on_delete=models.PROTECT)
+    start = models.DateTimeField()
+    ende = models.DateTimeField()
+    titel = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Planblöcke"
+        ordering = ["start"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(ende__gt=F("start")), name="planblock_ende_nach_start"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Plan {self.kategorie} ab {self.start:%d.%m. %H:%M}"

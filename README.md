@@ -6,8 +6,8 @@ Zufriedenheit. Daraus zeigt die App mit der Zeit, welche Muster gute von schwach
 unterscheiden. Die Ergebnisse sind Hypothesen („Unterschiede, keine Ursachen“).
 
 Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md). Stand: Phase 0 bis 2
-umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI). Als Nächstes: Phase 3 (Korrelationen,
-Selbstexperimente), danach „Plan vs. Ist“. Der alte Prototyp liegt unverändert im Branch
+und Plan vs. Ist umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI, Plankalender). Als
+Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt unverändert im Branch
 `archiv-2021`.
 
 ## Funktionen
@@ -25,6 +25,11 @@ Selbstexperimente), danach „Plan vs. Ist“. Der alte Prototyp liegt unveränd
   180 Tage) Vergleich des oberen und unteren Drittels nach der gewählten Zielgröße, je Merkmal
   Ø gute gegen Ø schwache Tage, stärkster Unterschied oben. Davor: „Noch N bewertete Tage bis
   zur ersten Auswertung“.
+- **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6 per CDN, mobil
+  Tagesansicht). Planblöcke per Ziehen anlegen, per Drag & Drop verschieben, Klick = bearbeiten
+  oder löschen; erfasste Einträge erscheinen gestreift daneben. Planblöcke überschneiden sich
+  nicht. In „Heute“ zeigt eine Tabelle je Kategorie-Art geplant gegen erfasst, sobald es
+  Planblöcke gibt. Der Kalender braucht JavaScript.
 - **Kategorien** haben eine Art: Deep Work, Shallow Work, Organisation, Pause, Freizeit.
   Pflege im Admin; `standardkategorien` legt Deep Work, Mails, Meetings, Organisation, Pause,
   Sport und Freizeit an.

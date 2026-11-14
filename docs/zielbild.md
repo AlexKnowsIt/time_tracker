@@ -224,6 +224,7 @@ als passives Sammeln.
 | **Jetzt** (Startseite) | Laufender Block mit Dauer, darunter große Knöpfe der häufigsten Kategorien, „Pause“, „Stopp“, „+250 ml Wasser“ |
 | **Heute** | Zeitleiste, Einträge bearbeiten, Lücken füllen |
 | **Tagesabschluss** | Produktivität und Zufriedenheit (je 1–10), Schlaf, Notiz. Danach die Zusammenfassung des Tages |
+| **Plan** | Wochenkalender: Planblöcke ziehen und verschieben, Ist gestreift daneben |
 | **Woche** | Zeitleisten untereinander mit Deep-Work-Zeit und beiden Scores |
 | **Muster** | Stufen 2 und 3, sobald genug Daten da sind (Umschalter Produktivität/Zufriedenheit). Vorher: „Noch 6 bewertete Tage bis zur ersten Auswertung“ |
 | **Admin** | Kategorien pflegen, Daten korrigieren |
@@ -261,14 +262,19 @@ Auswertung.
 - Korrelationsansicht mit den Vorsichtsregeln.
 - Modell und Ansicht für Experimente.
 
-### Phase 4: Plan vs. Ist (vorgemerkt, noch nicht gebaut)
+### Phase 4: Plan vs. Ist – umgesetzt (vorgezogen vor Phase 3)
 
-Idee aus dem Prototyp von 2021: Ist/Soll. Ich plane den Tag (Soll je Art oder Kategorie,
-zum Beispiel „3 h Deep Work“) und sehe am Abend, wie weit das Ist davon abweicht.
+Idee aus dem Prototyp von 2021: Ist/Soll. Ich plane Zeitblöcke und sehe, wie weit das Erfasste
+davon abweicht.
 
-- Modell für das Soll pro Tag oder Wochentag, Vergleich mit den Tagesmerkmalen.
-- Abweichung als zusätzliches Merkmal für die Auswertung.
-- Erst nach Phase 3 konzipieren, wenn klar ist, welche Zielwerte sich bewähren.
+- Modell `Planblock(nutzer, kategorie, start, ende, titel)`, überschneidungsfrei pro Nutzer
+  (gleiche Regel wie bei Einträgen, gemeinsame Hilfsfunktion in `forms.py`).
+- Seite „Plan“ (`/plan/`): Wochenkalender mit FullCalendar 6 (feste Version per CDN), Planblöcke
+  per Ziehen anlegen, verschieben, Größe ändern, löschen; Ist-Einträge gestreift daneben.
+  Änderungen per `fetch` mit CSRF-Token, der Server validiert mit einem Django-Form.
+- Tagesansicht: je Kategorie-Art geplant gegen erfasst (`plan.py`, reine Funktion, schneidet an
+  der Tagesgrenze 04:00 ab). Keine Score-Statistik, daher immer sichtbar.
+- Noch offen: Abweichung als Merkmal für die Auswertung, Soll je Wochentag als Vorlage.
 
 ### Phase 5: Optional
 

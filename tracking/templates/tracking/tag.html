@@ -24,6 +24,22 @@
 <p><a class="knopf" href="{% url 'abschluss' datum %}">Tag bewerten (Tagesabschluss)</a></p>
 {% endif %}
 
+{% if plan_ist %}
+<section class="karte" aria-label="Plan und Ist">
+  <h2>Plan vs. Ist</h2>
+  <table>
+    <thead><tr><th>Art</th><th>Geplant</th><th>Erfasst</th><th>Differenz</th></tr></thead>
+    <tbody>
+      {% for z in plan_ist %}
+      <tr><td>{{ z.label }}</td><td>{{ z.geplant }} min</td><td>{{ z.erfasst }} min</td>
+        <td>{% if z.differenz > 0 %}+{% endif %}{{ z.differenz }} min</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="klein"><a href="{% url 'plan' %}?datum={{ datum|date:'Y-m-d' }}">Plan bearbeiten</a></p>
+</section>
+{% endif %}
+
 <h2>Zeitleiste</h2>
 {% if zeitleiste %}
 {% include "tracking/_zeitleiste.html" %}

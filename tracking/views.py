@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
@@ -9,9 +9,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .auswertung import MIN_TAGE, vergleich
-from .forms import BewertungForm, EintragForm
+from .forms import BewertungForm, EintragForm, PlanblockForm
 from .merkmale import formatiere, tagesmerkmale
-from .models import Eintrag, Kategorie, Messung, Tagesbewertung
+from .models import Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
+from .plan import plan_vs_ist
 from .services import starte_eintrag, stoppe_eintrag
 from .zeit import dauer_text, tagesdatum, tagesgrenzen
 
@@ -172,6 +173,16 @@ def tag(request, datum=None):
     )
     wasser = sum(m.menge for m in messungen if m.typ == Messung.Typ.WASSER_ML)
     bewertung = Tagesbewertung.objects.filter(nutzer=request.user, datum=datum).first()
+    # Plan/Ist ist keine Score-Statistik und erscheint immer, sobald es Planblöcke gibt.
+    planbloecke = list(
+        Planblock.objects.filter(nutzer=request.user, start__lt=ende, ende__gt=beginn)
+        .select_related("kategorie")
+        .order_by("start")
+    )
+    plan_ist = None
+    if planbloecke:
+        ist = _eintraege_im_zeitraum(request.user, beginn, ende)
+        plan_ist = plan_vs_ist(planbloecke, ist, beginn, ende, jetzt)
     return render(
         request,
         "tracking/tag.html",
@@ -185,6 +196,7 @@ def tag(request, datum=None):
             ],
             "zeitleiste": _zeitleiste(eintraege, jetzt),
             "messungen": messungen,
+            "plan_ist": plan_ist,
             "zusammenfassung": _zusammenfassung(eintraege, wasser, bewertung, jetzt)
             if bewertung
             else None,
@@ -359,3 +371,115 @@ def muster(request):
         ziel_schwach=formatiere(ergebnis["ziel_schwach"], "zahl"),
     )
     return render(request, "tracking/muster.html", kontext)
+
+
+# --- Plan vs. Ist (Wochenkalender) ---------------------------------------------
+
+PLAN_MAX_TAGE = 62
+
+
+def _eintraege_im_zeitraum(nutzer, beginn, ende):
+    """Einträge, die [beginn, ende) berühren (auch über die Grenze ragende, laufende)."""
+    return list(
+        Eintrag.objects.filter(nutzer=nutzer, start__lt=ende)
+        .filter(Q(ende__isnull=True) | Q(ende__gt=beginn))
+        .select_related("kategorie")
+        .order_by("start")
+    )
+
+
+def _kalender_zeitraum(request):
+    """start/end von FullCalendar (ISO 8601). Ungültig oder > 62 Tage: None."""
+    try:
+        von = datetime.fromisoformat(request.GET["start"])
+        bis = datetime.fromisoformat(request.GET["end"])
+    except (KeyError, ValueError):
+        return None
+    von, bis = (timezone.make_aware(x) if timezone.is_naive(x) else x for x in (von, bis))
+    if bis <= von or bis - von > timedelta(days=PLAN_MAX_TAGE):
+        return None
+    return von, bis
+
+
+def _plan_event(b):
+    name = b.kategorie.name
+    return {
+        "id": str(b.pk),
+        "title": f"{name}: {b.titel}" if b.titel else name,
+        "start": b.start.isoformat(),
+        "end": b.ende.isoformat(),
+        "color": b.kategorie.farbe,
+        "extendedProps": {"kategorie": b.kategorie_id, "titel": b.titel},
+    }
+
+
+def _fehler(form):
+    texte = [f for liste in form.errors.values() for f in liste]
+    return JsonResponse({"fehler": " ".join(texte) or "Ungültige Eingabe."}, status=400)
+
+
+@login_required
+def plan(request):
+    if "datum" in request.GET:
+        try:
+            datum = date.fromisoformat(request.GET["datum"])
+        except ValueError:
+            datum = tagesdatum(timezone.now())
+    else:
+        datum = tagesdatum(timezone.now())
+    kategorien = Kategorie.objects.filter(nutzer=request.user, aktiv=True)
+    return render(request, "tracking/plan.html", {"datum": datum, "kategorien": kategorien})
+
+
+@login_required
+def plan_bloecke(request):
+    zeitraum = _kalender_zeitraum(request)
+    if zeitraum is None:
+        return JsonResponse({"fehler": "Ungültiger Zeitraum."}, status=400)
+    von, bis = zeitraum
+    bloecke = Planblock.objects.filter(
+        nutzer=request.user, start__lt=bis, ende__gt=von
+    ).select_related("kategorie")
+    return JsonResponse([_plan_event(b) for b in bloecke], safe=False)
+
+
+@login_required
+def plan_ist(request):
+    zeitraum = _kalender_zeitraum(request)
+    if zeitraum is None:
+        return JsonResponse({"fehler": "Ungültiger Zeitraum."}, status=400)
+    von, bis = zeitraum
+    jetzt = timezone.now()
+    events = [
+        {
+            "id": f"ist-{e.pk}",
+            "title": e.kategorie.name,
+            "start": e.start.isoformat(),
+            "end": (e.ende or jetzt).isoformat(),
+            "color": e.kategorie.farbe,
+            "editable": False,
+            "classNames": ["ist"],
+        }
+        for e in _eintraege_im_zeitraum(request.user, von, bis)
+    ]
+    return JsonResponse(events, safe=False)
+
+
+@login_required
+@require_POST
+def plan_speichern(request, pk=None):
+    block = get_object_or_404(Planblock, pk=pk, nutzer=request.user) if pk else None
+    form = PlanblockForm(request.POST, instance=block, nutzer=request.user)
+    if not form.is_valid():
+        return _fehler(form)
+    gespeichert = form.save(commit=False)
+    gespeichert.nutzer = request.user
+    gespeichert.save()
+    return JsonResponse(_plan_event(gespeichert), status=200 if block else 201)
+
+
+@login_required
+@require_POST
+def plan_loeschen(request, pk):
+    get_object_or_404(Planblock, pk=pk, nutzer=request.user).delete()
+    return JsonResponse({"ok": True})
