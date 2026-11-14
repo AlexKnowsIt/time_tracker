@@ -11,6 +11,24 @@
   const loeschen = document.getElementById("plan-loeschen");
   let aktuell = null; // {event} beim Bearbeiten, {start, ende} beim Anlegen
 
+  // Kategoriefarben im Dunkelmodus aufhellen und passende Schriftfarbe wählen (wie --kategorie-mischung im CSS)
+  const dunkel = window.matchMedia("(prefers-color-scheme: dark)");
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  function farbe(hex) {
+    if (!/^#[0-9a-f]{6}$/i.test(hex || "")) return { bg: "#888888", text: "#ffffff" };
+    const c = rgb(hex).map((v) => (dunkel.matches ? Math.round(v * 0.65 + 255 * 0.35) : v));
+    const hell = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+    return { bg: "rgb(" + c.join(",") + ")", text: hell > 0.6 ? "#14171f" : "#ffffff" };
+  }
+  const faerben = (e) => {
+    const f = farbe(e.color);
+    return Object.assign({}, e, { color: f.bg, textColor: f.text });
+  };
+  const schmal = () => window.innerWidth < 700;
+  const kopfleiste = () => schmal()
+    ? { left: "prev,next", center: "title", right: "today" }
+    : { left: "prev,next today", center: "title", right: "timeGridWeek,timeGridDay" };
+
   const urlFuer = (vorlage, id) => vorlage.replace("/0/", "/" + id + "/");
   const zeitText = (s, e) =>
     s.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) +
@@ -42,9 +60,14 @@
     locale: "de",
     firstDay: 1,
     initialDate: d.datum,
-    initialView: window.innerWidth < 700 ? "timeGridDay" : "timeGridWeek",
-    windowResize: () => kalender.changeView(window.innerWidth < 700 ? "timeGridDay" : "timeGridWeek"),
-    headerToolbar: { left: "prev,next today", center: "title", right: "timeGridWeek,timeGridDay" },
+    initialView: schmal() ? "timeGridDay" : "timeGridWeek",
+    windowResize: () => {
+      kalender.changeView(schmal() ? "timeGridDay" : "timeGridWeek");
+      kalender.setOption("headerToolbar", kopfleiste());
+      kalender.setOption("titleFormat", schmal() ? { day: "numeric", month: "short" } : undefined);
+    },
+    headerToolbar: kopfleiste(),
+    titleFormat: schmal() ? { day: "numeric", month: "short" } : undefined,
     buttonText: { today: "Heute", week: "Woche", day: "Tag" },
     allDaySlot: false,
     slotMinTime: "05:00:00",
@@ -56,8 +79,10 @@
     selectLongPressDelay: 400,
     editable: true,
     eventLongPressDelay: 400,
+    eventDataTransform: faerben,
+    // Erfasste Einträge (Ist) liegen blass im Hintergrund, Planblöcke deutlich davor.
     eventSources: [
-      { url: d.urlIst, editable: false },
+      { url: d.urlIst, editable: false, display: "background" },
       { url: d.urlBloecke },
     ],
     eventSourceFailure: () => zeigeMeldung("Kalenderdaten konnten nicht geladen werden."),
@@ -140,5 +165,6 @@
   document.getElementById("plan-abbrechen").addEventListener("click", schliesse);
   dialog.addEventListener("cancel", () => { kalender.unselect(); aktuell = null; });
 
+  dunkel.addEventListener("change", () => kalender.refetchEvents());
   kalender.render();
 })();

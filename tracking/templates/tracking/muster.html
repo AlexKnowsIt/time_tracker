@@ -1,32 +1,65 @@
 {% extends "tracking/base.html" %}
+{% load static %}
 {% block titel %}Muster · Zeiterfassung{% endblock %}
 {% block inhalt %}
 <h1>Muster</h1>
 <p class="klein">Unterschiede, keine Ursachen.</p>
-<p>Zielgröße:
+
+<nav class="segment" aria-label="Zielgröße">
   {% for key, label in ziele.items %}
-  <a class="klein-knopf" href="{% url 'muster' %}?ziel={{ key }}" {% if key == ziel %}aria-current="page"{% endif %}>{{ label }}</a>
+  <a href="{% url 'muster' %}?ziel={{ key }}"{% if key == ziel %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
-</p>
+</nav>
+
 {% if fehlend %}
 <section class="karte"><p>Noch {% if fehlend == 1 %}1 bewerteter Tag{% else %}{{ fehlend }} bewertete Tage{% endif %} bis zur ersten Auswertung.</p>
   <p class="klein">Ab {{ min_tage }} bewerteten Tagen (letzte {{ tage_max }} Tage) vergleicht die App gute und schwache Tage.</p></section>
 {% else %}
-<section class="karte">
-  <p>{{ ergebnis.n }} bewertete Tage, je {{ ergebnis.gruppe_n }} in den Gruppen.</p>
-  <p>Ø {{ ziel_label }} gute Tage (oberes Drittel): <strong>{{ ziel_gut }}</strong><br>
-     Ø {{ ziel_label }} schwache Tage (unteres Drittel): <strong>{{ ziel_schwach }}</strong></p>
+<div class="kennzahlen">
+  <div class="kennzahl"><span class="kennzahl-wert">{{ ergebnis.n }}</span><span class="kennzahl-label">bewertete Tage</span></div>
+  <div class="kennzahl"><span class="kennzahl-wert">{{ ergebnis.gruppe_n }}</span><span class="kennzahl-label">Tage je Gruppe</span></div>
+  <div class="kennzahl gut"><span class="kennzahl-wert">{{ ziel_gut }}</span><span class="kennzahl-label">Ø {{ ziel_label }} gute Tage (oberes Drittel)</span></div>
+  <div class="kennzahl schwach"><span class="kennzahl-wert">{{ ziel_schwach }}</span><span class="kennzahl-label">Ø {{ ziel_label }} schwache Tage (unteres Drittel)</span></div>
+</div>
+{% endif %}
+
+{% if verlauf %}
+<section class="karte" aria-labelledby="verlauf-titel">
+  <h2 id="verlauf-titel" class="abschnitt">Verlauf Produktivität und Zufriedenheit</h2>
+  <div class="diagramm-box" hidden>
+    <canvas data-diagramm="verlauf" data-quelle="verlauf-daten" role="img" aria-label="{{ verlauf.text }}"></canvas>
+  </div>
+  <p class="klein">{{ verlauf.text }}</p>
 </section>
-<table>
-  <caption class="klein">Stärkste Unterschiede oben (relativ zur Streuung des Merkmals).</caption>
-  <thead><tr><th scope="col">Merkmal</th><th scope="col">Ø gute</th><th scope="col">Ø schwache</th></tr></thead>
-  <tbody>
-    {% for z in ergebnis.zeilen %}
-    <tr><th scope="row">{{ z.label }}</th><td>{{ z.gut_text }}</td><td>{{ z.schwach_text }}</td></tr>
-    {% empty %}
-    <tr><td colspan="3">Für kein Merkmal gibt es genug Werte.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+{{ verlauf|json_script:"verlauf-daten" }}
+{% endif %}
+
+{% if not fehlend %}
+<h2 class="abschnitt">Gute gegen schwache Tage</h2>
+<p class="klein">Stärkste Unterschiede oben (relativ zur Streuung des Merkmals).</p>
+<p class="legende" aria-hidden="true"><span><i class="punkt gut"></i>Ø gute</span><span><i class="punkt schwach"></i>Ø schwache</span></p>
+<ul class="vergleich">
+  {% for z in ergebnis.zeilen %}
+  <li>
+    <p class="vergleich-label">{{ z.label }}</p>
+    <div class="vergleich-werte">
+      <div class="doppelbalken" aria-hidden="true">
+        <span class="gut" style="width:{{ z.balken_gut }}%"></span>
+        <span class="schwach" style="width:{{ z.balken_schwach }}%"></span>
+      </div>
+      <p class="vergleich-zahlen"><span class="gut"><span class="visuell-versteckt">Ø gute: </span>{{ z.gut_text }}</span><span class="schwach"><span class="visuell-versteckt">Ø schwache: </span>{{ z.schwach_text }}</span></p>
+    </div>
+  </li>
+  {% empty %}
+  <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if verlauf %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"
+        integrity="sha384-zYPBGXwO4633CABX/5Spf6emCKUJCfoOkhOMYyxMsatqQZPnDblmmOewfjsIVWCM"
+        crossorigin="anonymous" defer></script>
+<script src="{% static 'tracking/charts.js' %}" defer></script>
 {% endif %}
 {% endblock %}

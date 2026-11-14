@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from statistics import mean
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
@@ -19,6 +20,7 @@ from .zeit import dauer_text, tagesdatum, tagesgrenzen
 
 # Messungs-Knöpfe: Typ -> Menge pro Tipp
 MESSUNG_KNOEPFE = {Messung.Typ.WASSER_ML: 250, Messung.Typ.KAFFEE: 1}
+WASSER_ZIEL_ML = 2000  # Tagesziel für den Fortschrittsring auf „Jetzt“
 
 
 def manifest(request):
@@ -61,12 +63,17 @@ def _jetzt_kontext(nutzer):
     kategorien = Kategorie.objects.filter(nutzer=nutzer, aktiv=True).annotate(
         haeufigkeit=Count("eintrag", filter=Q(eintrag__start__gte=jetzt - timedelta(days=30)))
     )
+    laufend = Eintrag.objects.filter(nutzer=nutzer, ende=None).select_related("kategorie").first()
+    sekunden = max(0, int((jetzt - laufend.start).total_seconds())) if laufend else 0
+    wasser_ml = summen.get(Messung.Typ.WASSER_ML, 0)
     return {
-        "laufend": Eintrag.objects.filter(nutzer=nutzer, ende=None)
-        .select_related("kategorie")
-        .first(),
+        "laufend": laufend,
+        "laufend_sekunden": sekunden,
+        "laufend_hms": f"{sekunden // 3600}:{sekunden % 3600 // 60:02d}:{sekunden % 60:02d}",
         "kategorien": kategorien.order_by("-haeufigkeit", "name"),
-        "wasser_ml": summen.get(Messung.Typ.WASSER_ML, 0),
+        "wasser_ml": wasser_ml,
+        "wasser_ziel": WASSER_ZIEL_ML,
+        "wasser_prozent": min(100, round(wasser_ml * 100 / WASSER_ZIEL_ML)),
         "kaffee": summen.get(Messung.Typ.KAFFEE, 0),
     }
 
@@ -146,7 +153,37 @@ def _zeitleiste(eintraege, jetzt):
         "von": eintraege[0].start,
         "bis": cursor,
         "luecke": dauer_text(luecke_s) if luecke_s else None,
+        "ticks": _stunden_ticks(eintraege[0].start, cursor),
     }
+
+
+def _stunden_ticks(von, bis):
+    """Volle Stunden zwischen von und bis (in %); bei vielen nur jede 2. oder 3. beschriftet."""
+    gesamt = (bis - von).total_seconds()
+    if gesamt <= 0:
+        return []
+    h = timezone.localtime(von).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    ticks = []
+    while h < bis:
+        ticks.append({"pct": round((h - von).total_seconds() * 100 / gesamt, 2), "stunde": h.hour})
+        h += timedelta(hours=1)
+    schritt = 1 if len(ticks) <= 8 else 2 if len(ticks) <= 16 else 3
+    for i, t in enumerate(ticks):
+        t["text"] = f"{t['stunde']:02d}" if i % schritt == 0 else ""
+    return ticks
+
+
+def _minuten_je_art(eintraege, jetzt):
+    """Minuten je Kategorie-Art (Schlüssel) für die Diagramme."""
+    summen = {}
+    for e in eintraege:
+        art = e.kategorie.art
+        summen[art] = summen.get(art, 0) + ((e.ende or jetzt) - e.start).total_seconds() / 60
+    return summen
+
+
+def _zahl_text(wert):
+    return f"{wert:.1f}".replace(".", ",")
 
 
 def _zusammenfassung(eintraege, wasser_ml, bewertung, jetzt):
@@ -189,6 +226,10 @@ def tag(request, datum=None):
     if planbloecke:
         ist = _eintraege_im_zeitraum(request.user, beginn, ende)
         plan_ist = plan_vs_ist(planbloecke, ist, beginn, ende, jetzt)
+        maximum = max(max(z["geplant"], z["erfasst"]) for z in plan_ist) or 1
+        for z in plan_ist:  # Balkenbreiten in Prozent für die Darstellung
+            z["balken_geplant"] = round(z["geplant"] * 100 / maximum)
+            z["balken_erfasst"] = round(z["erfasst"] * 100 / maximum)
     return render(
         request,
         "tracking/tag.html",
@@ -311,10 +352,31 @@ def _woche_daten(nutzer, datum, jetzt):
 def woche(request, datum=None):
     jetzt = timezone.now()
     montag, sonntag, tage = _woche_daten(request.user, datum or tagesdatum(jetzt), jetzt)
+    je_tag = [_minuten_je_art(t["eintraege"], jetzt) for t in tage]
+    arten = [
+        {
+            "key": art,
+            "label": label,
+            "minuten": [round(m.get(art, 0), 1) for m in je_tag],
+        }
+        for art, label in Kategorie.Art.choices
+        if any(art in m for m in je_tag)
+    ]
+    gesamt = {a["label"]: dauer_text(sum(a["minuten"]) * 60) for a in arten}
+    diagramm = {
+        "tage": [t["datum"].isoformat() for t in tage],
+        "arten": arten,
+        "text": "Erfasste Zeit je Art in dieser Woche: "
+        + ", ".join(f"{label} {text}" for label, text in gesamt.items())
+        + "."
+        if arten
+        else "",
+    }
     return render(
         request,
         "tracking/woche.html",
         {
+            "diagramm": diagramm,
             "montag": montag,
             "sonntag": sonntag,
             "vorwoche": montag - timedelta(days=7),
@@ -396,9 +458,53 @@ def muster(request):
     ziel = request.GET.get("ziel")
     if ziel not in ZIELGROESSEN:
         ziel = "produktivitaet"
-    return render(
-        request, "tracking/muster.html", _muster_kontext(request.user, ziel, timezone.now())
+    jetzt = timezone.now()
+    kontext = _muster_kontext(request.user, ziel, jetzt)
+    for z in kontext.get("ergebnis", {}).get("zeilen", []):  # Doppelbalken: Breite in Prozent
+        maximum = max(abs(z["gut"]), abs(z["schwach"])) or 1
+        z["balken_gut"] = round(abs(z["gut"]) * 100 / maximum)
+        z["balken_schwach"] = round(abs(z["schwach"]) * 100 / maximum)
+    kontext["verlauf"] = _verlauf(request.user, jetzt)
+    return render(request, "tracking/muster.html", kontext)
+
+
+VERLAUF_TAGE = 90
+
+
+def _verlauf(nutzer, jetzt):
+    """Tageswerte und gleitender 7-Tage-Schnitt der letzten 90 Tage fürs Liniendiagramm."""
+    heute = tagesdatum(jetzt)
+    von = heute - timedelta(days=VERLAUF_TAGE - 1)
+    werte = {
+        b["datum"]: b
+        for b in Tagesbewertung.objects.filter(
+            nutzer=nutzer, datum__range=(von - timedelta(days=6), heute)
+        ).values("datum", "produktivitaet", "zufriedenheit")
+    }
+    if sum(1 for d in werte if d >= von) < 2:
+        return None
+    tage = [von + timedelta(days=i) for i in range(VERLAUF_TAGE)]
+
+    def schnitt(key, tag):
+        vals = [werte[d][key] for d in (tag - timedelta(days=j) for j in range(7)) if d in werte]
+        return round(mean(vals), 2) if vals else None
+
+    verlauf = {
+        "tage": [t.isoformat() for t in tage],
+        "produktivitaet": [werte[t]["produktivitaet"] if t in werte else None for t in tage],
+        "zufriedenheit": [werte[t]["zufriedenheit"] if t in werte else None for t in tage],
+        "schnitt_produktivitaet": [schnitt("produktivitaet", t) for t in tage],
+        "schnitt_zufriedenheit": [schnitt("zufriedenheit", t) for t in tage],
+    }
+    n = sum(1 for t in tage if t in werte)
+    letzte_p = next((x for x in reversed(verlauf["schnitt_produktivitaet"]) if x is not None), None)
+    letzte_z = next((x for x in reversed(verlauf["schnitt_zufriedenheit"]) if x is not None), None)
+    verlauf["text"] = (
+        f"Verlauf der letzten {VERLAUF_TAGE} Tage mit {n} bewerteten Tagen. "
+        f"Zuletzt im 7-Tage-Schnitt: Produktivität {_zahl_text(letzte_p)} von 10, "
+        f"Zufriedenheit {_zahl_text(letzte_z)} von 10."
     )
+    return verlauf
 
 
 # --- Plan vs. Ist (Wochenkalender) ---------------------------------------------

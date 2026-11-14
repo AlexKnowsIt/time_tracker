@@ -153,7 +153,8 @@ def test_zusammenfassung_erst_nach_score(client, nutzer, deepwork):
     )
     antwort = client.get(url)
     assert antwort.context["zusammenfassung"]["arten"] == [("Deep Work", "1 h 00 min")]
-    assert b"8/10" in antwort.content and b"5/10" in antwort.content
+    assert b"8<small>/10</small>" in antwort.content
+    assert b"5<small>/10</small>" in antwort.content
 
 
 def test_standardkategorien_idempotent(nutzer):

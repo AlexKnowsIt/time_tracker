@@ -11,6 +11,26 @@ Plankalender, JSON-API, MCP-Server). Als
 Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt unverändert im Branch
 `archiv-2021`.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/jetzt.png" width="240" alt="Jetzt: laufender Timer, Trinken, Kategorien"></td>
+    <td><img src="docs/screenshots/heute.png" width="240" alt="Heute: Kennzahlen und Zeitleiste"></td>
+    <td><img src="docs/screenshots/abschluss.png" width="240" alt="Tagesabschluss mit 1–10-Auswahl"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/woche.png" width="240" alt="Woche mit Diagramm Zeit je Art pro Tag"></td>
+    <td><img src="docs/screenshots/muster.png" width="240" alt="Muster mit Verlaufsdiagramm"></td>
+    <td><img src="docs/screenshots/jetzt-dunkel.png" width="240" alt="Jetzt im Dunkelmodus"></td>
+  </tr>
+</table>
+
+Desktop (ab 900 px Seitenleiste):
+
+<img src="docs/screenshots/plan.png" width="720" alt="Plan: Wochenkalender mit Planblöcken und erfassten Einträgen im Hintergrund">
+<img src="docs/screenshots/muster-desktop.png" width="720" alt="Muster auf dem Desktop">
+
 ## Funktionen
 
 - **Jetzt** (`/`): laufender Eintrag, ein Tipp auf eine Kategorie beendet den alten Block und
@@ -37,7 +57,7 @@ Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt u
 - **Einstellungen** (`/einstellungen/`, Link im Kopf): API-Tokens erzeugen, auflisten, widerrufen.
 - **API und MCP** (`/api/v1/`, `mcp_server/`): KI-Assistenten bedienen die Zeiterfassung, siehe
   „KI-Assistenten (MCP)“.
-- Auf dem Handy als Web-App installierbar (Manifest). HTMX kommt per CDN.
+- Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) kommen per CDN mit fester Version.
 
 ## Setup lokal
 

@@ -1,14 +1,23 @@
 {% extends "tracking/base.html" %}
 {% block titel %}Anmelden · Zeiterfassung{% endblock %}
+{% block seitenklasse %}schmal login{% endblock %}
 {% block inhalt %}
-<h1>Anmelden</h1>
-<form method="post" class="formular">
+<div class="login-kopf">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2.5h6"/></svg>
+  <h1>Anmelden</h1>
+  <p class="klein">Zeiterfassung</p>
+</div>
+<form method="post" class="formular karte">
   {% csrf_token %}
-  {{ form.non_field_errors }}
+  {% if form.non_field_errors %}<div class="fehler" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   {% for feld in form %}
-  <p>{{ feld.label_tag }} {{ feld }} {{ feld.errors }}</p>
+  <div class="feld">
+    <label for="{{ feld.id_for_label }}">{{ feld.label }}</label>
+    {{ feld }}
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
+  </div>
   {% endfor %}
   <input type="hidden" name="next" value="{{ next }}">
-  <button class="gross">Anmelden</button>
+  <button class="btn btn-primaer btn-voll">Anmelden</button>
 </form>
 {% endblock %}

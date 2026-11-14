@@ -1,22 +1,29 @@
 {% extends "tracking/base.html" %}
 {% block titel %}Tagesabschluss · Zeiterfassung{% endblock %}
+{% block seitenklasse %}schmal{% endblock %}
 {% block inhalt %}
-<h1>Tagesabschluss {{ datum|date:"d.m.Y" }}</h1>
+<h1>Tagesabschluss</h1>
+<p class="klein">{{ datum|date:"l, d.m.Y" }}</p>
 <form method="post" class="formular">
   {% csrf_token %}
-  {{ form.non_field_errors }}
+  {% if form.non_field_errors %}<div class="fehler" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   {% for feld in form %}
+  {% if feld.field.widget.input_type == "radio" %}
   <fieldset class="feld">
-    {% if feld.field.widget.input_type == "radio" %}
     <legend>{{ feld.label }}</legend>
-    <div class="zahlen">{% for radio in feld %}<label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
-    {% else %}
-    {{ feld.label_tag }} {{ feld }}
-    {% endif %}
-    {{ feld.errors }}
-    {% if feld.help_text %}<small>{{ feld.help_text }}</small>{% endif %}
+    <div class="pillen">{% for radio in feld %}<label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
+    <p class="pillen-skala" aria-hidden="true"><span>schwach</span><span>stark</span></p>
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
   </fieldset>
+  {% else %}
+  <div class="feld">
+    <label for="{{ feld.id_for_label }}">{{ feld.label }}</label>
+    {{ feld }}
+    {% if feld.help_text %}<small>{{ feld.help_text }}</small>{% endif %}
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
+  </div>
+  {% endif %}
   {% endfor %}
-  <button class="knopf">Speichern</button>
+  <button class="btn btn-primaer btn-voll">Speichern</button>
 </form>
 {% endblock %}

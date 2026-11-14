@@ -2,35 +2,53 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
   <title>{% block titel %}Zeiterfassung{% endblock %}</title>
-  <meta name="theme-color" content="#1f4e8c">
+  <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1218" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="{% url 'manifest' %}">
   <link rel="icon" href="{% static 'tracking/icon.svg' %}" type="image/svg+xml">
   <link rel="stylesheet" href="{% static 'tracking/app.css' %}">
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+  <script src="{% static 'tracking/app.js' %}" defer></script>
 </head>
-<body>
+<body{% if user.is_authenticated %} class="mit-navigation"{% endif %}>
+  {% with n=request.resolver_match.url_name %}
   <header class="kopf">
-    <strong>Zeiterfassung</strong>
+    <div class="kopf-titel">
+      <strong>Zeiterfassung</strong>
+      {% if user.is_authenticated %}<span class="kopf-datum">{% now "l, j. F" %}</span>{% endif %}
+    </div>
     {% if user.is_authenticated %}
-    <span class="kopf-rechts">
-      <a href="{% url 'einstellungen' %}">Einstellungen</a>
-      {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link">Abmelden</button></form>
-    </span>
+    <div class="kopf-aktionen">
+      {% if user.is_staff %}
+      <a class="icon-knopf" href="{% url 'admin:index' %}" aria-label="Admin">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 4.5 3.2 8.4 8 10 4.8-1.6 8-5.5 8-10V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+      </a>
+      {% endif %}
+      <a class="icon-knopf" href="{% url 'einstellungen' %}" aria-label="Einstellungen"{% if n == 'einstellungen' %} aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </a>
+    </div>
     {% endif %}
   </header>
-  <main>{% block inhalt %}{% endblock %}</main>
+  <main class="{% block seitenklasse %}{% endblock %}">{% block inhalt %}{% endblock %}</main>
   {% if user.is_authenticated %}
   <nav class="tabs" aria-label="Hauptnavigation">
-    <a href="{% url 'jetzt' %}" {% if request.resolver_match.url_name == 'jetzt' %}aria-current="page"{% endif %}>Jetzt</a>
-    <a href="{% url 'heute' %}" {% if request.resolver_match.url_name in 'heute tag eintrag_neu eintrag_bearbeiten' %}aria-current="page"{% endif %}>Heute</a>
-    <a href="{% url 'woche_aktuell' %}" {% if request.resolver_match.url_name in 'woche_aktuell woche' %}aria-current="page"{% endif %}>Woche</a>
-    <a href="{% url 'plan' %}" {% if request.resolver_match.url_name == 'plan' %}aria-current="page"{% endif %}>Plan</a>
-    <a href="{% url 'muster' %}" {% if request.resolver_match.url_name == 'muster' %}aria-current="page"{% endif %}>Muster</a>
-    <a href="{% url 'abschluss_heute' %}" {% if request.resolver_match.url_name == 'abschluss' %}aria-current="page"{% endif %}>Abschluss</a>
+    <a class="marke" href="{% url 'jetzt' %}" aria-hidden="true" tabindex="-1"><span>Zeiterfassung</span></a>
+    <a href="{% url 'jetzt' %}"{% if n == 'jetzt' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2.5h6"/></svg><span>Jetzt</span></a>
+    <a href="{% url 'heute' %}"{% if n == 'heute' or n == 'tag' or n == 'eintrag_neu' or n == 'eintrag_bearbeiten' or n == 'abschluss' or n == 'abschluss_heute' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Heute</span></a>
+    <a href="{% url 'woche_aktuell' %}"{% if n == 'woche_aktuell' or n == 'woche' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M10 20V4M15 20v-7M20 20V8"/></svg><span>Woche</span></a>
+    <a href="{% url 'plan' %}"{% if n == 'plan' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Plan</span></a>
+    <a href="{% url 'muster' %}"{% if n == 'muster' %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-6 4 3 8-9"/><path d="M15 5h5v5"/></svg><span>Muster</span></a>
   </nav>
   {% endif %}
+  {% endwith %}
 </body>
 </html>

@@ -1,8 +1,13 @@
-<div class="leiste" role="list">
-  {% for s in zeitleiste.segmente %}
-  <div role="listitem" class="{% if s.luecke %}luecke{% else %}block{% endif %}"
-       style="flex-grow:{{ s.sekunden|floatformat:0 }};{% if not s.luecke %}background:{{ s.eintrag.kategorie.farbe }}{% endif %}"
-       title="{{ s.text }}" aria-label="{{ s.text }}"></div>
-  {% endfor %}
+<div class="leiste-box{% if kompakt %} kompakt{% endif %}">
+  <div class="leiste" role="list">
+    {% for s in zeitleiste.segmente %}
+    <div role="listitem" class="{% if s.luecke %}luecke{% else %}block farbe{% endif %}"
+         style="flex-grow:{{ s.sekunden|floatformat:0 }};{% if not s.luecke %}--k:{{ s.eintrag.kategorie.farbe }}{% endif %}"
+         title="{{ s.text }}" aria-label="{{ s.text }}"></div>
+    {% endfor %}
+  </div>
+  <div class="leiste-ticks" aria-hidden="true">
+    {% for t in zeitleiste.ticks %}<span class="tick" style="left:{{ t.pct|stringformat:'.2f' }}%">{% if not kompakt %}<i>{{ t.text }}</i>{% endif %}</span>{% endfor %}
+  </div>
+  <p class="leiste-zeiten"><span>{{ zeitleiste.von|time:"H:i" }}</span><span>{{ zeitleiste.bis|time:"H:i" }}</span></p>
 </div>
-<p class="klein leiste-zeiten"><span>{{ zeitleiste.von|time:"H:i" }}</span><span>{{ zeitleiste.bis|time:"H:i" }}</span></p>

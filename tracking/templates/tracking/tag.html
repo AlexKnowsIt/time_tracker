@@ -1,77 +1,106 @@
 {% extends "tracking/base.html" %}
 {% block titel %}{{ datum|date:"d.m.Y" }} · Zeiterfassung{% endblock %}
 {% block inhalt %}
-<div class="tagnav">
-  <a href="{% url 'tag' vortag %}" aria-label="Vortag">‹ Vortag</a>
-  <h1>{{ datum|date:"l, d.m.Y" }}</h1>
-  <a href="{% url 'tag' folgetag %}" aria-label="Folgetag">Folgetag ›</a>
+<div class="seitenkopf">
+  <a class="icon-knopf" href="{% url 'tag' vortag %}" aria-label="Vortag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></a>
+  <div class="seitenkopf-mitte">
+    <h1>{{ datum|date:"l, d.m.Y" }}</h1>
+    <p class="klein">Ein Tag läuft von 04:00 bis 04:00 Uhr.</p>
+  </div>
+  <a class="icon-knopf" href="{% url 'tag' folgetag %}" aria-label="Folgetag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></a>
 </div>
-<p class="klein">Ein Tag läuft von 04:00 bis 04:00 Uhr.</p>
 
+<div class="spalten">
+<div class="spalte">
 {% if zusammenfassung %}
-<section class="karte" aria-label="Zusammenfassung">
-  <h2>Zusammenfassung</h2>
-  <p>Produktivität: <strong>{{ zusammenfassung.bewertung.produktivitaet }}/10</strong>
-    · Zufriedenheit: <strong>{{ zusammenfassung.bewertung.zufriedenheit }}/10</strong>
-    · <a href="{% url 'abschluss' datum %}">ändern</a></p>
-  <ul>
-    {% for art, dauer in zusammenfassung.arten %}<li>{{ art }}: {{ dauer }}</li>{% endfor %}
-    <li>Erfasst gesamt: {{ zusammenfassung.gesamt }}</li>
-    <li>Wasser: {{ zusammenfassung.wasser_ml }} ml</li>
+<section aria-label="Zusammenfassung">
+  <h2 class="abschnitt">Zusammenfassung</h2>
+  <div class="kennzahlen">
+    <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.bewertung.produktivitaet }}<small>/10</small></span><span class="kennzahl-label">Produktivität</span></div>
+    <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.bewertung.zufriedenheit }}<small>/10</small></span><span class="kennzahl-label">Zufriedenheit</span></div>
+    <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.gesamt }}</span><span class="kennzahl-label">Erfasst gesamt</span></div>
+    <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.wasser_ml }}<small> ml</small></span><span class="kennzahl-label">Wasser</span></div>
+  </div>
+  {% if zusammenfassung.arten %}
+  <ul class="arten">
+    {% for art, dauer in zusammenfassung.arten %}<li><span>{{ art }}</span><strong>{{ dauer }}</strong></li>{% endfor %}
   </ul>
+  {% endif %}
+  <p class="klein"><a href="{% url 'abschluss' datum %}">Bewertung ändern</a></p>
 </section>
 {% else %}
-<p><a class="knopf" href="{% url 'abschluss' datum %}">Tag bewerten (Tagesabschluss)</a></p>
+<a class="btn btn-primaer btn-voll abschluss-cta" href="{% url 'abschluss' datum %}">
+  <svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Tag abschließen und bewerten</a>
 {% endif %}
+
+<h2 class="abschnitt">Zeitleiste</h2>
+<section class="karte" aria-label="Zeitleiste">
+  {% if zeitleiste %}
+  {% include "tracking/_zeitleiste.html" %}
+  <p class="klein">Schraffiert = nicht erfasst{% if zeitleiste.luecke %} ({{ zeitleiste.luecke }}){% endif %}.</p>
+  {% else %}
+  <p class="leer-hinweis">Für diesen Tag gibt es noch keine Einträge.</p>
+  {% endif %}
+</section>
 
 {% if plan_ist %}
-<section class="karte" aria-label="Plan und Ist">
-  <h2>Plan vs. Ist</h2>
-  <table>
-    <thead><tr><th>Art</th><th>Geplant</th><th>Erfasst</th><th>Differenz</th></tr></thead>
-    <tbody>
+<section aria-label="Plan und Ist">
+  <h2 class="abschnitt">Plan vs. Ist</h2>
+  <div class="karte">
+    <ul class="planist">
       {% for z in plan_ist %}
-      <tr><td>{{ z.label }}</td><td>{{ z.geplant }} min</td><td>{{ z.erfasst }} min</td>
-        <td>{% if z.differenz > 0 %}+{% endif %}{{ z.differenz }} min</td></tr>
+      <li class="art-{{ z.art }}">
+        <div class="planist-kopf"><span class="art-name"><i class="punkt art"></i>{{ z.label }}</span>
+          <span class="planist-diff {% if z.differenz < 0 %}minus{% endif %}">{% if z.differenz > 0 %}+{% endif %}{{ z.differenz }} min</span></div>
+        <div class="balken" role="img" aria-label="{{ z.label }}: geplant {{ z.geplant }} min, erfasst {{ z.erfasst }} min">
+          <span class="balken-plan" style="width:{{ z.balken_geplant }}%"></span>
+          <span class="balken-ist art" style="width:{{ z.balken_erfasst }}%"></span>
+        </div>
+        <p class="klein">Geplant {{ z.geplant }} min · Erfasst {{ z.erfasst }} min</p>
+      </li>
       {% endfor %}
-    </tbody>
-  </table>
-  <p class="klein"><a href="{% url 'plan' %}?datum={{ datum|date:'Y-m-d' }}">Plan bearbeiten</a></p>
+    </ul>
+    <p class="klein"><a href="{% url 'plan' %}?datum={{ datum|date:'Y-m-d' }}">Plan bearbeiten</a></p>
+  </div>
 </section>
 {% endif %}
+</div>
 
-<h2>Zeitleiste</h2>
-{% if zeitleiste %}
-{% include "tracking/_zeitleiste.html" %}
-<p class="klein">Schraffiert = nicht erfasst{% if zeitleiste.luecke %} ({{ zeitleiste.luecke }}){% endif %}.</p>
-{% else %}
-<p>Für diesen Tag gibt es noch keine Einträge.</p>
-{% endif %}
-
-<h2>Einträge</h2>
+<div class="spalte">
+<h2 class="abschnitt">Einträge</h2>
 <ul class="liste">
   {% for z in zeilen %}
-  <li>
-    <span class="punkt" style="background:{{ z.eintrag.kategorie.farbe }}"></span>
-    <div>
+  <li class="farbe" style="--k:{{ z.eintrag.kategorie.farbe }}">
+    <span class="liste-balken"></span>
+    <div class="liste-text">
       <strong>{{ z.eintrag.kategorie.name }}</strong>
-      {{ z.eintrag.start|time:"H:i" }}–{% if z.eintrag.ende %}{{ z.eintrag.ende|time:"H:i" }}{% else %}läuft{% endif %}
-      ({{ z.dauer }})
-      {% if z.eintrag.notiz %}<br><span class="klein">{{ z.eintrag.notiz }}</span>{% endif %}
+      <span class="zeit">{{ z.eintrag.start|time:"H:i" }}–{% if z.eintrag.ende %}{{ z.eintrag.ende|time:"H:i" }}{% else %}läuft{% endif %} · {{ z.dauer }}</span>
+      {% if z.eintrag.notiz %}<span class="klein">{{ z.eintrag.notiz }}</span>{% endif %}
     </div>
-    <a class="klein-knopf" href="{% url 'eintrag_bearbeiten' z.eintrag.pk %}">Bearbeiten</a>
+    <a class="icon-knopf" href="{% url 'eintrag_bearbeiten' z.eintrag.pk %}" aria-label="Eintrag {{ z.eintrag.kategorie.name }} {{ z.eintrag.start|time:'H:i' }} bearbeiten">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></a>
     <form method="post" action="{% url 'eintrag_loeschen' z.eintrag.pk %}">{% csrf_token %}
-      <button class="klein-knopf" onclick="return confirm('Eintrag löschen?')">Löschen</button></form>
+      <button class="icon-knopf gefahr" aria-label="Eintrag {{ z.eintrag.kategorie.name }} {{ z.eintrag.start|time:'H:i' }} löschen" onclick="return confirm('Eintrag löschen?')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></form>
   </li>
+  {% empty %}
+  <li class="leer-hinweis">Noch keine Einträge.</li>
   {% endfor %}
 </ul>
-<p><a class="knopf" href="{% url 'eintrag_neu' datum %}">Eintrag nachtragen</a></p>
+<a class="btn btn-sekundaer btn-voll" href="{% url 'eintrag_neu' datum %}">
+  <svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><path d="M12 5v14M5 12h14"/></svg>Eintrag nachtragen</a>
 
-<h2>Messungen</h2>
+<h2 class="abschnitt">Messungen</h2>
 <ul class="liste">
-  {% for m in messungen %}<li>{{ m.zeitpunkt|time:"H:i" }} Uhr: {{ m.get_typ_display }} +{{ m.menge }}
+  {% for m in messungen %}
+  <li>
+    <div class="liste-text"><strong>{{ m.get_typ_display }} +{{ m.menge }}</strong><span class="zeit">{{ m.zeitpunkt|time:"H:i" }} Uhr</span></div>
     <form method="post" action="{% url 'messung_loeschen' m.pk %}">{% csrf_token %}
-      <button class="klein-knopf" onclick="return confirm('Messung löschen?')">Löschen</button></form></li>
-  {% empty %}<li>Keine Messungen.</li>{% endfor %}
+      <button class="icon-knopf gefahr" aria-label="Messung {{ m.get_typ_display }} {{ m.zeitpunkt|time:'H:i' }} löschen" onclick="return confirm('Messung löschen?')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></form>
+  </li>
+  {% empty %}<li class="leer-hinweis">Keine Messungen.</li>{% endfor %}
 </ul>
+</div>
+</div>
 {% endblock %}

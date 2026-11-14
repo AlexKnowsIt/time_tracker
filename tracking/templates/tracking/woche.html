@@ -1,22 +1,46 @@
 {% extends "tracking/base.html" %}
+{% load static %}
 {% block titel %}Woche · Zeiterfassung{% endblock %}
 {% block inhalt %}
-<div class="tagnav">
-  <a href="{% url 'woche' vorwoche %}" aria-label="Vorwoche">‹ Vorwoche</a>
-  <h1>{{ montag|date:"d.m." }}–{{ sonntag|date:"d.m.Y" }}</h1>
-  <a href="{% url 'woche' folgewoche %}" aria-label="Folgewoche">Folgewoche ›</a>
+<div class="seitenkopf">
+  <a class="icon-knopf" href="{% url 'woche' vorwoche %}" aria-label="Vorwoche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></a>
+  <div class="seitenkopf-mitte"><h1>{{ montag|date:"d.m." }}–{{ sonntag|date:"d.m.Y" }}</h1></div>
+  <a class="icon-knopf" href="{% url 'woche' folgewoche %}" aria-label="Folgewoche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></a>
 </div>
+
+{% if diagramm.arten %}
+<section class="karte" aria-labelledby="woche-diagramm-titel">
+  <h2 id="woche-diagramm-titel" class="abschnitt">Zeit je Art pro Tag</h2>
+  <div class="diagramm-box" hidden>
+    <canvas data-diagramm="woche" data-quelle="woche-daten" role="img" aria-label="{{ diagramm.text }}"></canvas>
+  </div>
+  <p class="klein">{{ diagramm.text }}</p>
+</section>
+{{ diagramm|json_script:"woche-daten" }}
+{% endif %}
+
+<div class="tageskarten">
 {% for t in tage %}
-<section class="karte" aria-label="{{ t.datum|date:'l, d.m.' }}">
+<section class="karte tageskarte" aria-label="{{ t.datum|date:'l, d.m.' }}">
   <h2><a href="{% url 'tag' t.datum %}">{{ t.datum|date:"l, d.m." }}</a></h2>
-  {% if t.zeitleiste %}{% include "tracking/_zeitleiste.html" with zeitleiste=t.zeitleiste %}{% else %}<p class="klein">Keine Einträge.</p>{% endif %}
+  {% if t.zeitleiste %}{% include "tracking/_zeitleiste.html" with zeitleiste=t.zeitleiste kompakt=True %}{% else %}<p class="klein">Keine Einträge.</p>{% endif %}
   {% if t.bewertung %}
-  <p>Deep Work: <strong>{{ t.deepwork }}</strong>
-    · Produktivität <strong>{{ t.bewertung.produktivitaet }}/10</strong>
-    · Zufriedenheit <strong>{{ t.bewertung.zufriedenheit }}/10</strong></p>
+  <p class="chips">
+    <span class="chip">Deep Work <strong>{{ t.deepwork }}</strong></span>
+    <span class="chip">Produktivität <strong>{{ t.bewertung.produktivitaet }}/10</strong></span>
+    <span class="chip">Zufriedenheit <strong>{{ t.bewertung.zufriedenheit }}/10</strong></span>
+  </p>
   {% else %}
   <p class="klein">Noch nicht bewertet. <a href="{% url 'abschluss' t.datum %}">Tag bewerten</a></p>
   {% endif %}
 </section>
 {% endfor %}
+</div>
+
+{% if diagramm.arten %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"
+        integrity="sha384-zYPBGXwO4633CABX/5Spf6emCKUJCfoOkhOMYyxMsatqQZPnDblmmOewfjsIVWCM"
+        crossorigin="anonymous" defer></script>
+<script src="{% static 'tracking/charts.js' %}" defer></script>
+{% endif %}
 {% endblock %}

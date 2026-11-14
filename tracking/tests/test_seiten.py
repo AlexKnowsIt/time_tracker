@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import datetime, time, timedelta
 from io import StringIO
 
@@ -201,3 +203,48 @@ def test_demodaten_erfolg_legt_nutzer_an_und_ist_deterministisch(client):
     # Muster funktioniert auf den Demodaten
     client.force_login(demo)
     assert "Ø gute" in client.get(reverse("muster")).content.decode()
+
+
+def _json_script(html, kennung):
+    treffer = re.search(
+        rf'<script id="{kennung}" type="application/json">(.*?)</script>', html, re.S
+    )
+    assert treffer, f"json_script {kennung} fehlt"
+    return json.loads(treffer.group(1))
+
+
+def test_woche_enthaelt_diagrammdaten(client, nutzer, kat):
+    heute = tagesdatum(timezone.now())
+    montag = heute - timedelta(days=heute.weekday())
+    for name, h, minuten in [("Deep Work", 8, 90), ("Pause", 10, 30)]:
+        Eintrag.objects.create(
+            nutzer=nutzer,
+            kategorie=kat[name],
+            start=lokal(montag, h),
+            ende=lokal(montag, h) + timedelta(minutes=minuten),
+        )
+    antwort = client.get(reverse("woche", args=[montag]))
+    daten = _json_script(antwort.content.decode(), "woche-daten")
+    assert len(daten["tage"]) == 7 and daten["tage"][0] == montag.isoformat()
+    arten = {a["key"]: a["minuten"] for a in daten["arten"]}
+    assert arten["deepwork"][0] == 90 and arten["pause"][0] == 30 and arten["deepwork"][1] == 0
+    assert "Deep Work 1 h 30 min" in daten["text"]
+    # Ohne Einträge gibt es kein Diagramm, die Seite funktioniert trotzdem.
+    leer = client.get(reverse("woche", args=[montag - timedelta(days=70)]))
+    assert leer.status_code == 200 and "woche-daten" not in leer.content.decode()
+
+
+def test_muster_enthaelt_verlaufsdaten(client, nutzer, kat):
+    bewerte_tage(nutzer, kat, 18)
+    daten = _json_script(client.get(reverse("muster")).content.decode(), "verlauf-daten")
+    assert len(daten["tage"]) == 90
+    for schluessel in ("produktivitaet", "zufriedenheit"):
+        assert len(daten[schluessel]) == 90 and len(daten["schnitt_" + schluessel]) == 90
+    assert sum(w is not None for w in daten["produktivitaet"]) == 18
+    assert daten["tage"][-1] == tagesdatum(timezone.now()).isoformat()
+    # gleitender 7-Tage-Schnitt liegt innerhalb der Tageswerte (1..10)
+    assert all(1 <= w <= 10 for w in daten["schnitt_produktivitaet"] if w is not None)
+    assert "7-Tage-Schnitt" in daten["text"]
+    # Unter zwei bewerteten Tagen kein Diagramm
+    Tagesbewertung.objects.all().delete()
+    assert "verlauf-daten" not in client.get(reverse("muster")).content.decode()

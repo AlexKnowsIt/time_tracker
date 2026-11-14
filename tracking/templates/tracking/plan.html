@@ -1,12 +1,13 @@
 {% extends "tracking/base.html" %}
 {% load static %}
 {% block titel %}Plan · Zeiterfassung{% endblock %}
+{% block seitenklasse %}breit{% endblock %}
 {% block inhalt %}
 <h1>Plan</h1>
-<p class="klein">Fläche ziehen = Block planen. Block ziehen oder Rand ziehen = verschieben oder Länge ändern. Antippen = bearbeiten. Gestreift = tatsächlich erfasst.</p>
-<noscript><p class="errorlist">Der Kalender braucht JavaScript. Ohne JavaScript kannst du Einträge unter „Heute“ bearbeiten.</p></noscript>
-<p id="plan-meldung" class="errorlist" role="alert" hidden></p>
-<div id="kalender"
+<p class="klein">Fläche ziehen = Block planen. Block ziehen oder Rand ziehen = verschieben oder Länge ändern. Antippen = bearbeiten. Blasse Fläche im Hintergrund = tatsächlich erfasst.</p>
+<noscript><p class="fehler">Der Kalender braucht JavaScript. Ohne JavaScript kannst du Einträge unter „Heute“ bearbeiten.</p></noscript>
+<p id="plan-meldung" class="fehler" role="alert" hidden></p>
+<div id="kalender" class="karte kalender-karte"
      data-datum="{{ datum|date:'Y-m-d' }}"
      data-csrf="{{ csrf_token }}"
      data-url-bloecke="{% url 'plan_bloecke' %}"
@@ -19,18 +20,18 @@
   <form method="dialog" class="formular" id="plan-form">
     <h2 id="plan-dialog-titel">Planblock</h2>
     <p class="klein" id="plan-zeit"></p>
-    <p class="errorlist" id="plan-fehler" role="alert" hidden></p>
-    <p><label for="plan-kategorie">Kategorie</label>
+    <p class="fehler" id="plan-fehler" role="alert" hidden></p>
+    <div class="feld"><label for="plan-kategorie">Kategorie</label>
       <select id="plan-kategorie" required>
         {% for k in kategorien %}<option value="{{ k.pk }}">{{ k.name }}</option>{% endfor %}
-      </select></p>
-    <p><label for="plan-titel">Titel (optional)</label>
-      <input id="plan-titel" type="text" maxlength="100"></p>
-    <p>
-      <button type="submit" class="klein-knopf" id="plan-speichern">Speichern</button>
-      <button type="button" class="klein-knopf" id="plan-loeschen" hidden>Löschen</button>
-      <button type="button" class="klein-knopf" id="plan-abbrechen">Abbrechen</button>
-    </p>
+      </select></div>
+    <div class="feld"><label for="plan-titel">Titel (optional)</label>
+      <input id="plan-titel" type="text" maxlength="100"></div>
+    <div class="knopfzeile">
+      <button type="submit" class="btn btn-primaer" id="plan-speichern">Speichern</button>
+      <button type="button" class="btn btn-sekundaer" id="plan-abbrechen">Abbrechen</button>
+      <button type="button" class="btn btn-gefahr" id="plan-loeschen" hidden>Löschen</button>
+    </div>
   </form>
 </dialog>
 

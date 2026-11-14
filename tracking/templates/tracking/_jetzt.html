@@ -1,35 +1,76 @@
-<div id="jetzt" hx-target="this" hx-swap="outerHTML">
-  <section class="laufend" aria-live="polite" aria-label="Laufender Eintrag">
-    {% if laufend %}
-    <div hx-get="{% url 'jetzt' %}" hx-trigger="every 60s">
-      <p class="klein">Läuft seit {{ laufend.start|time:"H:i" }} Uhr</p>
-      <p class="gross-text"><span class="punkt" style="background:{{ laufend.kategorie.farbe }}"></span>{{ laufend.kategorie.name }}</p>
-      <p>{{ laufend.start|timesince }}</p>
+<div id="jetzt" class="jetzt" hx-target="this" hx-swap="outerHTML">
+  <div class="spalten">
+    <div class="spalte">
+      <section class="timer{% if laufend %} laeuft{% endif %}" aria-label="Laufender Eintrag"
+               {% if laufend %}style="--k:{{ laufend.kategorie.farbe }}"{% endif %}>
+        {% if laufend %}
+        <div hx-get="{% url 'jetzt' %}" hx-trigger="every 60s">
+          <p class="timer-kategorie"><span class="punkt farbe"></span>{{ laufend.kategorie.name }}</p>
+          <p class="timer-zeit"><span data-sekunden="{{ laufend_sekunden }}" aria-hidden="true">{{ laufend_hms }}</span></p>
+          <p class="klein">Läuft seit {{ laufend.start|time:"H:i" }} Uhr</p>
+        </div>
+        <form method="post" action="{% url 'stopp' %}" hx-post="{% url 'stopp' %}">{% csrf_token %}
+          <button class="btn btn-gefahr btn-voll">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>Stopp</button>
+        </form>
+        {% else %}
+        <p class="timer-kategorie">Nichts läuft</p>
+        <p class="timer-zeit leer" aria-hidden="true">0:00:00</p>
+        <p class="klein">Tippe unten auf eine Kategorie, um die Zeit zu erfassen.</p>
+        {% endif %}
+      </section>
+
+      <section class="trinken" aria-labelledby="trinken-titel">
+        <h2 id="trinken-titel" class="abschnitt">Heute getrunken</h2>
+        <div class="karte trinken-karte">
+          <div class="ring" role="img" aria-label="Wasser: {{ wasser_ml }} von {{ wasser_ziel }} ml, {{ wasser_prozent }} Prozent des Tagesziels">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="ring-spur" cx="50" cy="50" r="42"/>
+              <circle class="ring-wert" cx="50" cy="50" r="42" stroke-dasharray="{% widthratio wasser_prozent 100 264 %} 264"/>
+            </svg>
+            <p class="ring-text"><strong>{{ wasser_ml }}</strong><span>von {{ wasser_ziel }} ml</span></p>
+          </div>
+          <div class="schnell">
+            <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
+              <input type="hidden" name="typ" value="wasser_ml">
+              <button class="rund" aria-label="250 ml Wasser hinzufügen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3.5 4.2 6 7.2 6 10.5a6 6 0 0 1-12 0C6 10.2 8.5 7.2 12 3Z"/></svg>
+              </button>
+              <span class="schnell-text">+250 ml</span>
+            </form>
+            <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
+              <input type="hidden" name="typ" value="kaffee">
+              <button class="rund" aria-label="1 Kaffee hinzufügen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v2M12 3v2"/></svg>
+              </button>
+              <span class="schnell-text">+1 Kaffee <small>({{ kaffee }} heute)</small></span>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <a class="btn btn-sekundaer btn-voll abschluss-cta" href="{% url 'abschluss_heute' %}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Tag abschließen</a>
     </div>
-    <form method="post" action="{% url 'stopp' %}" hx-post="{% url 'stopp' %}">{% csrf_token %}<button class="knopf stopp">Stopp</button></form>
-    {% else %}
-    <p class="gross-text">Nichts läuft</p>
-    {% endif %}
-  </section>
 
-  <h2>Wechseln zu</h2>
-  <div class="raster">
-    {% for k in kategorien %}
-    <form method="post" action="{% url 'start' k.pk %}" hx-post="{% url 'start' k.pk %}">{% csrf_token %}
-      <button class="knopf" style="border-left-color:{{ k.farbe }}">{{ k.name }}</button>
-    </form>
-    {% empty %}
-    <p>Noch keine Kategorien. Im <a href="{% url 'admin:tracking_kategorie_add' %}">Admin</a> anlegen oder
-      <code>python manage.py standardkategorien &lt;benutzername&gt;</code> ausführen.</p>
-    {% endfor %}
-  </div>
-
-  <h2>Heute getrunken</h2>
-  <p class="gross-text">{{ wasser_ml }} ml Wasser · {{ kaffee }} Kaffee</p>
-  <div class="raster">
-    <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
-      <input type="hidden" name="typ" value="wasser_ml"><button class="knopf">+250 ml Wasser</button></form>
-    <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
-      <input type="hidden" name="typ" value="kaffee"><button class="knopf">+1 Kaffee</button></form>
+    <div class="spalte">
+      <h2 class="abschnitt">Wechseln zu</h2>
+      <div class="kacheln">
+        {% for k in kategorien %}
+        {% if laufend and laufend.kategorie_id == k.pk %}
+        <div class="kachel aktiv farbe" style="--k:{{ k.farbe }}" aria-current="true">
+          <span class="punkt farbe"></span><span class="kachel-name">{{ k.name }}</span><span class="kachel-status">läuft</span>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'start' k.pk %}" hx-post="{% url 'start' k.pk %}">{% csrf_token %}
+          <button class="kachel farbe" style="--k:{{ k.farbe }}"><span class="punkt farbe"></span><span class="kachel-name">{{ k.name }}</span></button>
+        </form>
+        {% endif %}
+        {% empty %}
+        <p class="karte leer-hinweis">Noch keine Kategorien. Im <a href="{% url 'admin:tracking_kategorie_add' %}">Admin</a> anlegen oder
+          <code>python manage.py standardkategorien &lt;benutzername&gt;</code> ausführen.</p>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
