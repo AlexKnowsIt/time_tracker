@@ -1,0 +1,14 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Eintrag · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<h1>{% if eintrag %}Eintrag bearbeiten{% else %}Eintrag nachtragen{% endif %}</h1>
+<form method="post" class="formular">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for feld in form %}
+  <p>{{ feld.label_tag }} {{ feld }} {{ feld.errors }}</p>
+  {% endfor %}
+  <button class="knopf">Speichern</button>
+  <a href="{% url 'tag' datum %}">Abbrechen</a>
+</form>
+{% endblock %}

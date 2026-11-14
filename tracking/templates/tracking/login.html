@@ -1,0 +1,14 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Anmelden · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<h1>Anmelden</h1>
+<form method="post" class="formular">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for feld in form %}
+  <p>{{ feld.label_tag }} {{ feld }} {{ feld.errors }}</p>
+  {% endfor %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="gross">Anmelden</button>
+</form>
+{% endblock %}

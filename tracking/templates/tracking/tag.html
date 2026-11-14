@@ -1,0 +1,68 @@
+{% extends "tracking/base.html" %}
+{% block titel %}{{ datum|date:"d.m.Y" }} · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<div class="tagnav">
+  <a href="{% url 'tag' vortag %}" aria-label="Vortag">‹ Vortag</a>
+  <h1>{{ datum|date:"l, d.m.Y" }}</h1>
+  <a href="{% url 'tag' folgetag %}" aria-label="Folgetag">Folgetag ›</a>
+</div>
+<p class="klein">Ein Tag läuft von 04:00 bis 04:00 Uhr.</p>
+
+{% if zusammenfassung %}
+<section class="karte" aria-label="Zusammenfassung">
+  <h2>Zusammenfassung</h2>
+  <p>Score: <strong>{{ zusammenfassung.bewertung.score }}/10</strong>
+    {% if zusammenfassung.bewertung.energie %}· Energie {{ zusammenfassung.bewertung.energie }}/5{% endif %}
+    · <a href="{% url 'abschluss' datum %}">ändern</a></p>
+  <ul>
+    {% for art, dauer in zusammenfassung.arten %}<li>{{ art }}: {{ dauer }}</li>{% endfor %}
+    <li>Erfasst gesamt: {{ zusammenfassung.gesamt }}</li>
+    <li>Wasser: {{ zusammenfassung.wasser_ml }} ml</li>
+  </ul>
+</section>
+{% else %}
+<p><a class="knopf" href="{% url 'abschluss' datum %}">Tag bewerten (Tagesabschluss)</a></p>
+{% endif %}
+
+<h2>Zeitleiste</h2>
+{% if zeitleiste %}
+<div class="leiste" role="list">
+  {% for s in zeitleiste.segmente %}
+  <div role="listitem" class="{% if s.luecke %}luecke{% else %}block{% endif %}"
+       style="flex-grow:{{ s.sekunden|floatformat:0 }};{% if not s.luecke %}background:{{ s.eintrag.kategorie.farbe }}{% endif %}"
+       title="{{ s.text }}" aria-label="{{ s.text }}"></div>
+  {% endfor %}
+</div>
+<p class="klein leiste-zeiten"><span>{{ zeitleiste.von|time:"H:i" }}</span><span>{{ zeitleiste.bis|time:"H:i" }}</span></p>
+<p class="klein">Schraffiert = nicht erfasst{% if zeitleiste.luecke %} ({{ zeitleiste.luecke }}){% endif %}.</p>
+{% else %}
+<p>Für diesen Tag gibt es noch keine Einträge.</p>
+{% endif %}
+
+<h2>Einträge</h2>
+<ul class="liste">
+  {% for z in zeilen %}
+  <li>
+    <span class="punkt" style="background:{{ z.eintrag.kategorie.farbe }}"></span>
+    <div>
+      <strong>{{ z.eintrag.kategorie.name }}</strong>
+      {{ z.eintrag.start|time:"H:i" }}–{% if z.eintrag.ende %}{{ z.eintrag.ende|time:"H:i" }}{% else %}läuft{% endif %}
+      ({{ z.dauer }})
+      {% if z.eintrag.notiz %}<br><span class="klein">{{ z.eintrag.notiz }}</span>{% endif %}
+    </div>
+    <a class="klein-knopf" href="{% url 'eintrag_bearbeiten' z.eintrag.pk %}">Bearbeiten</a>
+    <form method="post" action="{% url 'eintrag_loeschen' z.eintrag.pk %}">{% csrf_token %}
+      <button class="klein-knopf" onclick="return confirm('Eintrag löschen?')">Löschen</button></form>
+  </li>
+  {% endfor %}
+</ul>
+<p><a class="knopf" href="{% url 'eintrag_neu' datum %}">Eintrag nachtragen</a></p>
+
+<h2>Messungen</h2>
+<ul class="liste">
+  {% for m in messungen %}<li>{{ m.zeitpunkt|time:"H:i" }} Uhr: {{ m.get_typ_display }} +{{ m.menge }}
+    <form method="post" action="{% url 'messung_loeschen' m.pk %}">{% csrf_token %}
+      <button class="klein-knopf" onclick="return confirm('Messung löschen?')">Löschen</button></form></li>
+  {% empty %}<li>Keine Messungen.</li>{% endfor %}
+</ul>
+{% endblock %}

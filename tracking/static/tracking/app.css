@@ -1,0 +1,53 @@
+:root { --blau: #1f4e8c; --text: #1a1d21; --grau: #5c6670; --bg: #f6f7f9; --karte: #fff; --rand: #c4cad1; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 18px/1.4 system-ui, sans-serif; color: var(--text); background: var(--bg); padding-bottom: 5rem; }
+main { max-width: 40rem; margin: 0 auto; padding: 0 1rem; }
+h1 { font-size: 1.4rem; margin: 1rem 0 .5rem; }
+h2 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
+a { color: var(--blau); }
+.kopf { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .5rem 1rem; background: var(--blau); color: #fff; }
+.kopf a, .kopf .link { color: #fff; }
+.kopf-rechts { display: flex; gap: 1rem; align-items: center; }
+.kopf-rechts form { margin: 0; }
+.link { background: none; border: 0; font: inherit; text-decoration: underline; cursor: pointer; min-height: 44px; padding: 0 .25rem; }
+:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+.tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--karte); border-top: 1px solid var(--rand); }
+.tabs a { flex: 1; text-align: center; padding: 1rem 0; text-decoration: none; font-weight: 600; color: var(--grau); }
+.tabs a[aria-current] { color: var(--blau); box-shadow: inset 0 3px 0 var(--blau); }
+.knopf, button.gross { display: block; width: 100%; min-height: 64px; padding: .75rem 1rem; font: inherit; font-weight: 600; text-align: left; color: var(--text);
+  background: var(--karte); border: 1px solid var(--rand); border-left: 10px solid var(--blau); border-radius: 10px; cursor: pointer; text-decoration: none; }
+a.knopf { text-align: center; border-left-width: 1px; }
+.knopf:active { background: #e8edf3; }
+.knopf.stopp { border-left-color: #b3261e; margin-top: .5rem; }
+.raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; }
+.raster form { margin: 0; }
+.laufend, .karte { background: var(--karte); border: 1px solid var(--rand); border-radius: 10px; padding: .75rem 1rem; margin-top: 1rem; }
+.laufend p, .karte p { margin: .25rem 0; }
+.gross-text { font-size: 1.3rem; font-weight: 700; }
+.klein { font-size: .9rem; color: var(--grau); }
+.punkt { display: inline-block; width: 1rem; height: 1rem; border-radius: 50%; margin-right: .5rem; flex: none; vertical-align: middle; }
+.tagnav { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.tagnav h1 { font-size: 1.1rem; text-align: center; margin: 1rem 0 .5rem; }
+.tagnav a { padding: .75rem .5rem; text-decoration: none; font-weight: 600; white-space: nowrap; }
+.leiste { display: flex; height: 3rem; border: 1px solid var(--rand); border-radius: 6px; overflow: hidden; background: var(--karte); }
+.leiste > div { flex-basis: 0; min-width: 3px; }
+.leiste .block { border-right: 1px solid #fff; }
+.leiste .luecke { background: repeating-linear-gradient(45deg, #e3e6ea, #e3e6ea 4px, #fff 4px, #fff 8px); }
+.leiste-zeiten { display: flex; justify-content: space-between; margin: .25rem 0; }
+.liste { list-style: none; padding: 0; margin: 0; }
+.liste li { display: flex; align-items: center; gap: .5rem; padding: .6rem 0; border-bottom: 1px solid var(--rand); flex-wrap: wrap; }
+.liste li div { flex: 1; min-width: 10rem; }
+.liste form { margin: 0; }
+.klein-knopf { min-height: 44px; padding: .5rem .8rem; font: inherit; font-size: .9rem; background: var(--karte); border: 1px solid var(--rand); border-radius: 8px; color: var(--blau); text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; }
+.formular input:not([type=radio]), .formular select, .formular textarea { width: 100%; font: inherit; padding: .6rem; border: 1px solid var(--grau); border-radius: 8px; background: #fff; }
+.formular label { display: block; font-weight: 600; margin-bottom: .25rem; }
+.errorlist { color: #b3261e; list-style: none; padding: 0; margin: .25rem 0; font-weight: 600; }
+.feld { border: 0; padding: 0; margin: 0 0 1rem; }
+.feld legend { font-weight: 600; padding: 0; margin-bottom: .4rem; }
+.feld small { color: var(--grau); }
+.zahlen { display: flex; flex-wrap: wrap; gap: .4rem; }
+.zahlen label { margin: 0; }
+.zahlen input { position: absolute; opacity: 0; }
+.zahlen span { display: flex; align-items: center; justify-content: center; width: 3.2rem; height: 3.2rem; border: 2px solid var(--grau); border-radius: 10px; background: #fff; font-weight: 700; cursor: pointer; }
+.zahlen input:checked + span { background: var(--blau); color: #fff; border-color: var(--blau); }
+.zahlen input:focus-visible + span { outline: 3px solid #ffbf47; outline-offset: 2px; }

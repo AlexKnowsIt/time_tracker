@@ -1,31 +1,48 @@
-# Time Tracker to boost Productivity
+# Zeiterfassung
 
-## Overview
+Django-App, um über den Tag Tätigkeiten, Pausen und Trinkmengen zu erfassen und
+abends den Tag zu bewerten. Daraus entsteht mit der Zeit eine Auswertung, welche
+Muster gute von schlechten Tagen unterscheiden.
 
-This is a Django project that aims to provide simple planning and tracking of multiple user data and shows them inside an Javascript Dashboard to the specific user. We're using Djano REST-Framework in addition to an implementation of chart.js for data visualization and fullcalendar.io for displaying and editing Events in our planner tool.
-We build this upon the idea of user customization in mind. With the implemented REST-APIs you can add your own software to the server to track your hours or synchronize events. If you have a solution that can be used by others as well we're happy if you share your solution via a pull request.
+Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md).
+Stand: Phase 1 (Erfassen): Modelle, Admin und Oberfläche für Jetzt, Heute und Tagesabschluss.
 
-## Usage
+## Setup
 
-As every django project just clone the repository and enable your hosting settings in wsgi. For development purposes after downloading use the commands
-python manage.py migrate followed by python manage.py runserver (or on Linux use python3 instead).
+Voraussetzung: [uv](https://docs.astral.sh/uv/).
 
-## Docker
+```
+uv sync
+export DJANGO_DEBUG=1
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+uv run python manage.py python manage.py standardkategorien <benutzername>
+uv run python manage.py runserver   # App: http://127.0.0.1:8000/, Admin: /admin/
+uv run pytest
+uv run ruff check && uv run ruff format
+```
 
-Use the prebuild Docker-Image from DockerHub with the name alexg7/time_tracker.
+## Bedienung
 
-## Contributing
+- **Jetzt** (`/`): laufender Eintrag, ein Tipp auf eine Kategorie beendet den alten Block und
+  startet den neuen. „Stopp“, „+250 ml Wasser“, „+1 Kaffee“ je ein Tipp. Kategorien sind nach
+  Häufigkeit der letzten 30 Tage sortiert.
+- **Heute** (`/tag/`, `/tag/JJJJ-MM-TT/`): Zeitleiste (Tag = 04:00 bis 04:00 Uhr, schraffiert =
+  nicht erfasst), Einträge bearbeiten, löschen, nachtragen, Messungen. Die Zusammenfassung
+  erscheint erst, nachdem der Score gespeichert wurde.
+- **Abschluss** (`/tag/JJJJ-MM-TT/abschluss/`): Score 1–10, Energie, Schlaf, Notiz. Erneutes
+  Speichern aktualisiert die Bewertung des Tages.
+- Kategorien pflegt man im Admin. Für einen neuen Nutzer legt
+  `uv run python manage.py standardkategorien <benutzername>` Fokus, Meetings, Mails, Pause,
+  Sport und Privat an (idempotent).
+- Auf dem Handy über „Zum Startbildschirm hinzufügen“ als Web-App installierbar (Manifest,
+  kein Service Worker). HTMX kommt per CDN.
 
-We are happy about any contributions and any issue that you can find so feel free to fork, open issues and help us by opening pull requests.
+## Umgebungsvariablen
 
-## Recommendations
-
-If you have recommendations for future features also let us know. Just open an issue and we will give our best to implement them.
-
-### To-Dos
-
-- Standard Values should be taken from calendar, so that differences can be applied instead of reqriting the planning by hand.
-- Filtering for API Calls for current user (full multi-user support)
-- Authentication for Calendar PUT API -> No changes without permission
-- REST-API to communicate with bash script and design own add-ons that can communicate via token with the server
-- AI to predict optimal workload for next day (maximize average between happiness and productivity)
+| Variable | Bedeutung |
+|---|---|
+| `DJANGO_SECRET_KEY` | Pflicht, außer bei `DJANGO_DEBUG=1` (dann Dev-Default) |
+| `DJANGO_DEBUG` | `1`/`true`/`yes` schaltet Debug ein, Standard: aus |
+| `DJANGO_ALLOWED_HOSTS` | Kommagetrennte Hostnamen |
+| `DJANGO_DB_PATH` | Pfad der SQLite-Datei, Standard `db.sqlite3` im Projektordner |

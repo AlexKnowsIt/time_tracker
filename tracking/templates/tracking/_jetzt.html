@@ -1,0 +1,35 @@
+<div id="jetzt" hx-target="this" hx-swap="outerHTML">
+  <section class="laufend" aria-live="polite" aria-label="Laufender Eintrag">
+    {% if laufend %}
+    <div hx-get="{% url 'jetzt' %}" hx-trigger="every 60s">
+      <p class="klein">Läuft seit {{ laufend.start|time:"H:i" }} Uhr</p>
+      <p class="gross-text"><span class="punkt" style="background:{{ laufend.kategorie.farbe }}"></span>{{ laufend.kategorie.name }}</p>
+      <p>{{ laufend.start|timesince }}</p>
+    </div>
+    <form method="post" action="{% url 'stopp' %}" hx-post="{% url 'stopp' %}">{% csrf_token %}<button class="knopf stopp">Stopp</button></form>
+    {% else %}
+    <p class="gross-text">Nichts läuft</p>
+    {% endif %}
+  </section>
+
+  <h2>Wechseln zu</h2>
+  <div class="raster">
+    {% for k in kategorien %}
+    <form method="post" action="{% url 'start' k.pk %}" hx-post="{% url 'start' k.pk %}">{% csrf_token %}
+      <button class="knopf" style="border-left-color:{{ k.farbe }}">{{ k.name }}</button>
+    </form>
+    {% empty %}
+    <p>Noch keine Kategorien. Im <a href="{% url 'admin:tracking_kategorie_add' %}">Admin</a> anlegen oder
+      <code>python manage.py standardkategorien &lt;benutzername&gt;</code> ausführen.</p>
+    {% endfor %}
+  </div>
+
+  <h2>Heute getrunken</h2>
+  <p class="gross-text">{{ wasser_ml }} ml Wasser · {{ kaffee }} Kaffee</p>
+  <div class="raster">
+    <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
+      <input type="hidden" name="typ" value="wasser_ml"><button class="knopf">+250 ml Wasser</button></form>
+    <form method="post" action="{% url 'messung' %}" hx-post="{% url 'messung' %}">{% csrf_token %}
+      <input type="hidden" name="typ" value="kaffee"><button class="knopf">+1 Kaffee</button></form>
+  </div>
+</div>

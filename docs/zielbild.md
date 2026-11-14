@@ -1,0 +1,269 @@
+# Zielbild: Zeiterfassung mit Tagesauswertung
+
+Stand: November 2026. Dieses Dokument beschreibt, wohin das Projekt gehen soll,
+warum die Architektur so gewählt ist und in welchen Schritten es entsteht.
+
+## 1. Worum es geht
+
+Ich erfasse über den Tag, was ich mache, wann ich Pause mache und wie viel ich
+trinke. Am Abend bewerte ich, wie produktiv sich der Tag angefühlt hat. Die App
+zeigt mir mit der Zeit, welche Muster gute Tage von schlechten unterscheiden:
+zum Beispiel Pausenzeitpunkte, lange Fokusblöcke statt Zerstückelung, Trinkmenge
+oder Arbeitsbeginn.
+
+**Erfolgskriterium:** Nach zwei Wochen sehe ich erste belastbare Unterschiede
+zwischen guten und schlechten Tagen. Nach vier bis sechs Wochen habe ich eine
+Handvoll konkreter Hypothesen, die ich gezielt ausprobieren kann.
+
+## 2. Das größte Risiko ist nicht die Technik
+
+Solche Projekte scheitern fast immer daran, dass man nach einer Woche aufhört
+zu erfassen. Deshalb gilt für jede Entscheidung:
+
+- **Jede Erfassung dauert unter 5 Sekunden.** Ein Tipp auf „Jetzt: Fokus“ beendet
+  den laufenden Block und startet den neuen. „+250 ml“ ist ein Tipp.
+- **Vergessen ist erlaubt.** Einträge lassen sich nachträglich korrigieren,
+  Lücken werden in der Tagesansicht sichtbar und können beim Tagesabschluss
+  gefüllt werden.
+- **Die App liefert ab Tag 1 etwas zurück.** Die Tagesansicht als Zeitleiste ist
+  sofort nützlich, auch ohne jede Statistik.
+- **Läuft auf dem Handy.** Installierbar als Web-App auf dem Startbildschirm.
+
+## 3. Architektur
+
+### Entscheidung: Python + Django bleibt, aber neu aufgesetzt
+
+| Option | Bewertung |
+|---|---|
+| **Django + Templates + HTMX + SQLite** | **Gewählt.** Login, Admin-Oberfläche, ORM, Migrationen und Formulare sind eingebaut. Python ist die beste Sprache für die spätere Auswertung. Eine Sprache, ein Prozess, eine Datei als Datenbank. |
+| FastAPI + React/Svelte | Zwei Codebasen, zwei Sprachen, eigenes Auth und Admin. Lohnt sich erst bei einer echten API für mehrere Clients. |
+| Reine Browser-App (lokal, ohne Server) | Kein Server nötig, aber Daten liegen nur auf einem Gerät. Synchronisierung Handy/Laptop wäre ein eigenes Projekt. Auswertung in JavaScript ist mühsamer. |
+| Fertiges Tool (Toggl, Clockify) + Auswertung als Notebook | Ehrlich gesagt der schnellste Weg zu Ergebnissen. Fällt raus, weil Tagesbewertung, Trinken und die Verknüpfung in einer App das Ziel sind und das Projekt auch ein Lernprojekt ist. Bleibt als Rückfallebene. |
+
+### Bausteine
+
+- **Python 3.13, Django 5.2 LTS** (Support bis April 2028).
+- **HTMX** für die Timer-Knöpfe und schnelle Eingaben ohne Seiten-Neuladen.
+  Kein JavaScript-Framework, kein Build-Schritt.
+- **SQLite** im WAL-Modus. Für einen bis wenige Nutzer mehr als ausreichend.
+  Backup ist das Kopieren einer Datei.
+- **Auswertung mit der Standardbibliothek.** `statistics.correlation(x, y,
+  method="ranked")` liefert seit Python 3.12 die Spearman-Korrelation. Bei
+  einigen hundert Tagen braucht es weder pandas noch scipy. Erst bei
+  Regressionen in Phase 4 kommt eine Bibliothek dazu.
+- **Diagramme:** Die Zeitleiste ist reines HTML/CSS. Für Verläufe reicht
+  Chart.js, eingebunden per CDN.
+- **PWA-Manifest**, damit die App auf dem Handy wie eine App startet.
+- **Werkzeuge:** `uv` für Abhängigkeiten, `ruff` für Formatierung und Linting,
+  `pytest` mit `pytest-django` für Tests.
+- **Konfiguration über Umgebungsvariablen.** `SECRET_KEY` und `DEBUG` stehen nie
+  im Repo. Zeitzone `Europe/Berlin`, `USE_TZ = True`.
+- **Betrieb:** ein Container auf dem eigenen Server hinter Cloudflare Access,
+  zusätzlich Django-Login. Nächtliches Backup der SQLite-Datei.
+
+### Projektstruktur
+
+```
+zeiterfassung/        Projekt-Einstellungen, URLs
+tracking/             Einzige App: Modelle, Views, Templates
+  models.py
+  views.py            Timer, Tagesansicht, Tagesabschluss
+  merkmale.py         Berechnung der Tagesmerkmale (reine Funktionen)
+  auswertung.py       Vergleiche, Korrelationen (reine Funktionen)
+  templates/tracking/
+  tests/
+docs/
+```
+
+Eine App reicht. Aufteilen lohnt sich erst, wenn ein Teil wirklich eigenständig
+wird. `merkmale.py` und `auswertung.py` sind reine Funktionen ohne Django-Bezug,
+damit sie einfach testbar sind.
+
+## 4. Datenmodell
+
+Kernidee: **Rohdaten erfassen, Kennzahlen berechnen.** Gespeichert werden nur
+Ereignisse mit Zeitstempel. Alles, was man auswerten will (Pausen, Blocklängen,
+Wechsel), wird daraus abgeleitet. So kann man später neue Fragen an alte Daten
+stellen.
+
+```
+Kategorie
+  name            "Fokus: Projekt X", "Meetings", "Mails", "Pause", "Sport"
+  art             fokus | routine | pause | privat
+  farbe
+  aktiv           alte Kategorien ausblenden statt löschen
+  nutzer → User
+
+Eintrag           ein Zeitblock
+  start           Zeitpunkt
+  ende            Zeitpunkt, leer = läuft gerade
+  kategorie → Kategorie
+  notiz           optional
+  nutzer → User
+  Regel: pro Nutzer höchstens ein laufender Eintrag
+
+Messung           zählbare Dinge zu einem Zeitpunkt
+  zeitpunkt
+  typ             wasser_ml | kaffee | ...
+  menge
+  nutzer → User
+
+Tagesbewertung    einmal pro Tag, beim Tagesabschluss
+  datum           eindeutig pro Nutzer
+  score           1–10: „Wie produktiv hat sich der Tag angefühlt?“
+  energie         1–5, optional
+  schlaf_h        optional
+  notiz           „Was hat geholfen, was hat gestört?“
+  nutzer → User
+```
+
+Begründungen:
+
+- **Kategorien statt fester Spalten.** Die alte Version hatte drei feste Felder.
+  Jede neue Tätigkeit hätte eine Migration gebraucht. Jetzt ist es ein Datensatz.
+- **`art` an der Kategorie** fasst viele Kategorien für die Auswertung zusammen:
+  „Fokuszeit“ ist die Summe aller Kategorien der Art `fokus`.
+- **Pausen werden aktiv erfasst** (Kategorie der Art `pause`). Eine Lücke
+  zwischen Einträgen ist „nicht erfasst“ und keine Pause. Sonst verfälscht jede
+  vergessene Erfassung die Statistik.
+- **`Messung` ist allgemein.** Wasser, Kaffee und später anderes brauchen keine
+  neue Tabelle.
+- **Nutzerbezug von Anfang an.** Kostet jetzt ein Feld, später eine schmerzhafte
+  Migration. Damit kann auch Damjan die App nutzen.
+- **Tagesgrenze 04:00 Uhr.** Arbeit bis 1 Uhr nachts zählt zum Vortag.
+  Einträge über Mitternacht gehören zum Tag ihres Starts.
+
+## 5. Tagesmerkmale
+
+Aus den Rohdaten eines Tages berechnet `merkmale.py` eine feste Liste von
+Kennzahlen. Das ist die Grundlage aller Auswertungen.
+
+| Bereich | Merkmal |
+|---|---|
+| Umfang | Fokuszeit gesamt, erfasste Zeit gesamt, Anteil nicht erfasst |
+| Zeitpunkte | Beginn des ersten Arbeitsblocks, Ende des letzten |
+| Fokus | Anzahl Fokusblöcke, längster Block, mittlere Blocklänge |
+| Zerstückelung | Kategoriewechsel pro Arbeitsstunde, Anzahl Blöcke unter 15 min |
+| Pausen | Anzahl, Gesamtdauer, Uhrzeit der ersten Pause, längste Strecke ohne Pause |
+| Trinken | Wasser gesamt, Wasser bis 14 Uhr |
+| Kontext | Wochentag, Schlaf, Score des Vortags |
+
+Neue Merkmale sind eine neue Funktion, keine Datenbankänderung.
+
+## 6. Auswertung: schnell zu Ergebnissen
+
+Die Stufen bauen aufeinander auf. Jede ist für sich nützlich.
+
+### Stufe 1, ab Tag 1: Spiegel
+
+- Zeitleiste des Tages mit farbigen Blöcken und sichtbaren Lücken.
+- Wochenansicht: Zeitleisten untereinander, daneben der Score.
+
+Schon das bewusste Hinschauen verändert Verhalten. Das ist der schnellste
+Nutzen und braucht keine Statistik.
+
+### Stufe 2, ab ca. 14 bewerteten Tagen: Gute gegen schlechte Tage
+
+Die Tage werden nach Score in ein oberes und ein unteres Drittel geteilt. Für
+jedes Merkmal zeigt die App den Mittelwert beider Gruppen nebeneinander:
+
+> An deinen besten Tagen: erste Pause um 10:40, längster Fokusblock 95 min.
+> An deinen schwächsten Tagen: erste Pause um 12:50, längster Fokusblock 40 min.
+
+Das ist robust, braucht wenig Daten und ist sofort verständlich.
+
+### Stufe 3, ab ca. 30 Tagen: Korrelationen mit Vorsicht
+
+- Spearman-Korrelation jedes Merkmals mit dem Score (rangbasiert, unempfindlich
+  gegen Ausreißer).
+- Angezeigt werden nur Merkmale mit |r| ≥ 0,3, immer mit der Anzahl Tage.
+- Formuliert als Hypothese, nie als Befund: „Möglicher Zusammenhang“.
+- Hinweis gegen Zufallstreffer: Bei 20 Merkmalen ist rein zufällig etwa eines
+  auffällig. Deshalb geht Stufe 3 direkt in Stufe 4 über.
+
+### Stufe 4, laufend: Selbstexperimente
+
+Korrelation sagt nicht, was wirkt. Ein Experiment schon, und es geht schneller
+als passives Sammeln.
+
+- Ich lege eine Regel fest, zum Beispiel „Erste Pause vor 11 Uhr“, und einen
+  Zeitraum von zwei Wochen.
+- Die App vergleicht den Score im Experimentzeitraum mit den zwei Wochen davor
+  und zeigt, an wie vielen Tagen ich die Regel eingehalten habe.
+- Dafür kommt ein kleines Modell `Experiment(titel, regel, start, ende)` dazu.
+
+### Später, optional
+
+- **Wochenbericht per LLM:** Die Tagesmerkmale der Woche gehen als Tabelle an
+  ein Sprachmodell, das einen kurzen Rückblick mit Auffälligkeiten schreibt.
+  Wenig Aufwand, aber nur ein Formulierungshelfer, nicht die Statistik selbst.
+- **Regression über mehrere Merkmale** ab etwa 90 Tagen, um Merkmale
+  auseinanderzuhalten, die gemeinsam auftreten.
+- **CSV-Export** für eigene Auswertungen im Notebook.
+
+### Regeln für saubere Daten
+
+- Der Score wird abgegeben, **bevor** man die Statistik des Tages sieht.
+- Die Score-Frage bleibt immer gleich formuliert.
+- Tage ohne Bewertung fließen nicht in die Auswertung ein.
+
+## 7. Oberfläche
+
+| Seite | Zweck |
+|---|---|
+| **Jetzt** (Startseite) | Laufender Block mit Dauer, darunter große Knöpfe der häufigsten Kategorien, „Pause“, „Stopp“, „+250 ml Wasser“ |
+| **Heute** | Zeitleiste, Einträge bearbeiten, Lücken füllen |
+| **Tagesabschluss** | Score, Energie, Schlaf, Notiz. Danach die Zusammenfassung des Tages |
+| **Woche** | Zeitleisten untereinander mit Score |
+| **Muster** | Stufen 2 und 3, sobald genug Daten da sind. Vorher: „Noch 6 Tage bis zur ersten Auswertung“ |
+| **Admin** | Kategorien pflegen, Daten korrigieren |
+
+## 8. Umsetzung in Phasen
+
+### Phase 0: Aufräumen und Grundgerüst
+
+- Alten Code aus diesem Branch entfernen. Er bleibt auf `master` erhalten.
+- Neues Django-5.2-Projekt mit `uv`, `ruff`, `pytest`, Konfiguration per
+  Umgebungsvariablen.
+- README mit Start-Anleitung.
+
+### Phase 1: Erfassen (MVP)
+
+- Modelle `Kategorie`, `Eintrag`, `Messung`, `Tagesbewertung` mit Admin.
+- Seiten „Jetzt“, „Heute“, „Tagesabschluss“.
+- Login, PWA-Manifest, Deployment auf dem Server.
+- Tests für Timer-Logik (nur ein laufender Eintrag, Wechsel beendet den alten)
+  und Tagesgrenze.
+
+**Danach sofort täglich nutzen.** Jeder Tag ohne Erfassung verschiebt die
+Auswertung.
+
+### Phase 2: Spiegel und erste Muster (nach ca. 2 Wochen Daten)
+
+- `merkmale.py` mit Tests.
+- Wochenansicht.
+- Vergleich gute gegen schlechte Tage.
+
+### Phase 3: Hypothesen und Experimente (nach ca. 4 Wochen)
+
+- Korrelationsansicht mit den Vorsichtsregeln.
+- Modell und Ansicht für Experimente.
+
+### Phase 4: Optional
+
+- Wochenbericht per LLM, CSV-Export, Regression.
+
+## 9. Bewusst nicht vorgesehen
+
+- Automatisches Tracking von Apps oder Fenstern am Rechner. Dafür gibt es
+  ActivityWatch. Eine Anbindung wäre später als Import denkbar.
+- Mehrmandantenfähigkeit, Teams, Abrechnung.
+- Native Handy-App.
+- Machine Learning, bevor genug Daten für einfache Statistik da sind.
+
+## 10. Branch-Strategie
+
+- `master` bleibt unverändert als Erinnerung an die erste Version von 2020.
+- Die Neuentwicklung läuft auf einem eigenen Branch, der später zum neuen
+  Hauptbranch wird. Vorgeschlagen: neuer Branch `main` als GitHub-Standard,
+  `master` umbenannt in `archiv-2020`.

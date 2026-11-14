@@ -1,0 +1,22 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Tagesabschluss · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<h1>Tagesabschluss {{ datum|date:"d.m.Y" }}</h1>
+<form method="post" class="formular">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for feld in form %}
+  <fieldset class="feld">
+    {% if feld.field.widget.input_type == "radio" %}
+    <legend>{{ feld.label }}</legend>
+    <div class="zahlen">{% for radio in feld %}<label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
+    {% else %}
+    {{ feld.label_tag }} {{ feld }}
+    {% endif %}
+    {{ feld.errors }}
+    {% if feld.help_text %}<small>{{ feld.help_text }}</small>{% endif %}
+  </fieldset>
+  {% endfor %}
+  <button class="knopf">Speichern</button>
+</form>
+{% endblock %}

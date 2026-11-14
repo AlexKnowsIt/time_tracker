@@ -1,0 +1,32 @@
+{% load static %}<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}Zeiterfassung{% endblock %}</title>
+  <meta name="theme-color" content="#1f4e8c">
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="icon" href="{% static 'tracking/icon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'tracking/app.css' %}">
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="kopf">
+    <strong>Zeiterfassung</strong>
+    {% if user.is_authenticated %}
+    <span class="kopf-rechts">
+      {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link">Abmelden</button></form>
+    </span>
+    {% endif %}
+  </header>
+  <main>{% block inhalt %}{% endblock %}</main>
+  {% if user.is_authenticated %}
+  <nav class="tabs" aria-label="Hauptnavigation">
+    <a href="{% url 'jetzt' %}" {% if request.resolver_match.url_name == 'jetzt' %}aria-current="page"{% endif %}>Jetzt</a>
+    <a href="{% url 'heute' %}" {% if request.resolver_match.url_name in 'heute tag eintrag_neu eintrag_bearbeiten' %}aria-current="page"{% endif %}>Heute</a>
+    <a href="{% url 'abschluss_heute' %}" {% if request.resolver_match.url_name == 'abschluss' %}aria-current="page"{% endif %}>Abschluss</a>
+  </nav>
+  {% endif %}
+</body>
+</html>
