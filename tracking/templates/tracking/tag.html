@@ -11,8 +11,8 @@
 {% if zusammenfassung %}
 <section class="karte" aria-label="Zusammenfassung">
   <h2>Zusammenfassung</h2>
-  <p>Score: <strong>{{ zusammenfassung.bewertung.score }}/10</strong>
-    {% if zusammenfassung.bewertung.energie %}· Energie {{ zusammenfassung.bewertung.energie }}/5{% endif %}
+  <p>Produktivität: <strong>{{ zusammenfassung.bewertung.produktivitaet }}/10</strong>
+    · Zufriedenheit: <strong>{{ zusammenfassung.bewertung.zufriedenheit }}/10</strong>
     · <a href="{% url 'abschluss' datum %}">ändern</a></p>
   <ul>
     {% for art, dauer in zusammenfassung.arten %}<li>{{ art }}: {{ dauer }}</li>{% endfor %}
@@ -26,14 +26,7 @@
 
 <h2>Zeitleiste</h2>
 {% if zeitleiste %}
-<div class="leiste" role="list">
-  {% for s in zeitleiste.segmente %}
-  <div role="listitem" class="{% if s.luecke %}luecke{% else %}block{% endif %}"
-       style="flex-grow:{{ s.sekunden|floatformat:0 }};{% if not s.luecke %}background:{{ s.eintrag.kategorie.farbe }}{% endif %}"
-       title="{{ s.text }}" aria-label="{{ s.text }}"></div>
-  {% endfor %}
-</div>
-<p class="klein leiste-zeiten"><span>{{ zeitleiste.von|time:"H:i" }}</span><span>{{ zeitleiste.bis|time:"H:i" }}</span></p>
+{% include "tracking/_zeitleiste.html" %}
 <p class="klein">Schraffiert = nicht erfasst{% if zeitleiste.luecke %} ({{ zeitleiste.luecke }}){% endif %}.</p>
 {% else %}
 <p>Für diesen Tag gibt es noch keine Einträge.</p>

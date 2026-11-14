@@ -26,6 +26,6 @@ class MessungAdmin(admin.ModelAdmin):
 
 @admin.register(Tagesbewertung)
 class TagesbewertungAdmin(admin.ModelAdmin):
-    list_display = ["datum", "score", "energie", "schlaf_h", "nutzer"]
+    list_display = ["datum", "produktivitaet", "zufriedenheit", "schlaf_h", "nutzer"]
     list_filter = ["nutzer"]
     date_hierarchy = "datum"

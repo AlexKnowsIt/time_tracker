@@ -18,8 +18,8 @@ def nutzer():
 
 
 @pytest.fixture
-def fokus(nutzer):
-    return Kategorie.objects.create(nutzer=nutzer, name="Fokus", art=Kategorie.Art.FOKUS)
+def deepwork(nutzer):
+    return Kategorie.objects.create(nutzer=nutzer, name="Deep Work", art=Kategorie.Art.DEEPWORK)
 
 
 @pytest.fixture
@@ -27,9 +27,9 @@ def pause(nutzer):
     return Kategorie.objects.create(nutzer=nutzer, name="Pause", art=Kategorie.Art.PAUSE)
 
 
-def test_starte_eintrag_beendet_alten(nutzer, fokus, pause):
+def test_starte_eintrag_beendet_alten(nutzer, deepwork, pause):
     t0 = timezone.now()
-    alt = starte_eintrag(nutzer, fokus, jetzt=t0)
+    alt = starte_eintrag(nutzer, deepwork, jetzt=t0)
     neu = starte_eintrag(nutzer, pause, jetzt=t0 + timedelta(minutes=30))
     alt.refresh_from_db()
     assert alt.ende == t0 + timedelta(minutes=30)
@@ -37,36 +37,39 @@ def test_starte_eintrag_beendet_alten(nutzer, fokus, pause):
     assert Eintrag.objects.filter(nutzer=nutzer, ende=None).count() == 1
 
 
-def test_stoppe_eintrag(nutzer, fokus):
+def test_stoppe_eintrag(nutzer, deepwork):
     assert stoppe_eintrag(nutzer) is None
-    starte_eintrag(nutzer, fokus)
+    starte_eintrag(nutzer, deepwork)
     assert stoppe_eintrag(nutzer).ende is not None
 
 
-def test_zweiter_laufender_eintrag_scheitert_in_db(nutzer, fokus):
-    Eintrag.objects.create(nutzer=nutzer, kategorie=fokus, start=timezone.now())
+def test_zweiter_laufender_eintrag_scheitert_in_db(nutzer, deepwork):
+    Eintrag.objects.create(nutzer=nutzer, kategorie=deepwork, start=timezone.now())
     with pytest.raises(IntegrityError), transaction.atomic():
-        Eintrag.objects.create(nutzer=nutzer, kategorie=fokus, start=timezone.now())
+        Eintrag.objects.create(nutzer=nutzer, kategorie=deepwork, start=timezone.now())
 
 
-def test_ende_vor_start_scheitert_in_db(nutzer, fokus):
+def test_ende_vor_start_scheitert_in_db(nutzer, deepwork):
     jetzt = timezone.now()
     with pytest.raises(IntegrityError), transaction.atomic():
         Eintrag.objects.create(
-            nutzer=nutzer, kategorie=fokus, start=jetzt, ende=jetzt - timedelta(minutes=1)
+            nutzer=nutzer, kategorie=deepwork, start=jetzt, ende=jetzt - timedelta(minutes=1)
         )
 
 
-def test_score_11_scheitert(nutzer):
+@pytest.mark.parametrize("feld", ["produktivitaet", "zufriedenheit"])
+@pytest.mark.parametrize("wert", [0, 11])
+def test_score_ausserhalb_1_bis_10_scheitert(nutzer, feld, wert):
+    daten = {"produktivitaet": 5, "zufriedenheit": 5, feld: wert}
     heute = timezone.localdate()
     with pytest.raises(ValidationError):
-        Tagesbewertung(nutzer=nutzer, datum=heute, score=11).full_clean()
+        Tagesbewertung(nutzer=nutzer, datum=heute, **daten).full_clean()
     with pytest.raises(IntegrityError), transaction.atomic():
-        Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, score=11)
+        Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, **daten)
 
 
 def test_eine_bewertung_pro_tag(nutzer):
     heute = timezone.localdate()
-    Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, score=7)
+    Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, produktivitaet=7, zufriedenheit=6)
     with pytest.raises(IntegrityError), transaction.atomic():
-        Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, score=8)
+        Tagesbewertung.objects.create(nutzer=nutzer, datum=heute, produktivitaet=8, zufriedenheit=8)

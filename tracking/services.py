@@ -3,7 +3,7 @@
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Eintrag
+from .models import Eintrag, Kategorie
 
 
 def stoppe_eintrag(nutzer, jetzt=None):
@@ -25,3 +25,25 @@ def starte_eintrag(nutzer, kategorie, jetzt=None):
     with transaction.atomic():
         stoppe_eintrag(nutzer, jetzt)
         return Eintrag.objects.create(nutzer=nutzer, kategorie=kategorie, start=jetzt)
+
+
+STANDARDKATEGORIEN = [
+    ("Deep Work", Kategorie.Art.DEEPWORK, "#2a5db0"),
+    ("Mails", Kategorie.Art.SHALLOWWORK, "#6b4fa0"),
+    ("Meetings", Kategorie.Art.SHALLOWWORK, "#8a5a00"),
+    ("Organisation", Kategorie.Art.ORGANISATION, "#2a8a8a"),
+    ("Pause", Kategorie.Art.PAUSE, "#1d7a4d"),
+    ("Sport", Kategorie.Art.FREIZEIT, "#b3402a"),
+    ("Freizeit", Kategorie.Art.FREIZEIT, "#5c6670"),
+]
+
+
+def lege_standardkategorien_an(nutzer):
+    """Idempotent. Gibt die Anzahl neu angelegter Kategorien zurück."""
+    neu = 0
+    for name, art, farbe in STANDARDKATEGORIEN:
+        _, angelegt = Kategorie.objects.get_or_create(
+            nutzer=nutzer, name=name, defaults={"art": art, "farbe": farbe}
+        )
+        neu += angelegt
+    return neu

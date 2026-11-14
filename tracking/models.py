@@ -6,14 +6,15 @@ from django.db.models import F, Q
 
 class Kategorie(models.Model):
     class Art(models.TextChoices):
-        FOKUS = "fokus", "Fokus"
-        ROUTINE = "routine", "Routine"
+        DEEPWORK = "deepwork", "Deep Work"
+        SHALLOWWORK = "shallowwork", "Shallow Work"
+        ORGANISATION = "organisation", "Organisation"
         PAUSE = "pause", "Pause"
-        PRIVAT = "privat", "Privat"
+        FREIZEIT = "freizeit", "Freizeit"
 
     nutzer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    art = models.CharField(max_length=10, choices=Art)
+    art = models.CharField(max_length=15, choices=Art)
     farbe = models.CharField(max_length=7, default="#888888", help_text="Hex, z. B. #3366cc")
     aktiv = models.BooleanField(default=True, help_text="Alte Kategorien ausblenden statt löschen")
 
@@ -78,16 +79,15 @@ class Tagesbewertung(models.Model):
 
     nutzer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     datum = models.DateField()
-    score = models.PositiveSmallIntegerField(
-        "Score",
-        help_text="Wie produktiv hat sich der Tag angefühlt? (1–10)",
+    produktivitaet = models.PositiveSmallIntegerField(
+        "Produktivität",
+        help_text="Wie produktiv war der Tag? (1–10)",
         validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
-    energie = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text="1–5",
+    zufriedenheit = models.PositiveSmallIntegerField(
+        "Zufriedenheit",
+        help_text="Wie zufrieden bist du mit dem Tag? (1–10)",
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
     schlaf_h = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     notiz = models.TextField(blank=True, help_text="Was hat geholfen, was hat gestört?")
@@ -97,12 +97,17 @@ class Tagesbewertung(models.Model):
         ordering = ["-datum"]
         constraints = [
             models.UniqueConstraint(fields=["nutzer", "datum"], name="eine_bewertung_pro_tag"),
-            models.CheckConstraint(condition=Q(score__gte=1, score__lte=10), name="score_1_bis_10"),
             models.CheckConstraint(
-                condition=Q(energie__isnull=True) | Q(energie__gte=1, energie__lte=5),
-                name="energie_1_bis_5",
+                condition=Q(produktivitaet__gte=1, produktivitaet__lte=10),
+                name="produktivitaet_1_bis_10",
+            ),
+            models.CheckConstraint(
+                condition=Q(zufriedenheit__gte=1, zufriedenheit__lte=10),
+                name="zufriedenheit_1_bis_10",
             ),
         ]
 
     def __str__(self):
-        return f"{self.datum}: {self.score}"
+        return (
+            f"{self.datum}: Produktivität {self.produktivitaet}, Zufriedenheit {self.zufriedenheit}"
+        )

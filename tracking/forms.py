@@ -61,25 +61,22 @@ class EintragForm(forms.ModelForm):
         return daten
 
 
-class BewertungForm(forms.ModelForm):
-    score = forms.TypedChoiceField(
-        label="Wie produktiv hat sich der Tag angefühlt? (1–10)",
+def _skala(label):
+    return forms.TypedChoiceField(
+        label=label,
         choices=[(i, str(i)) for i in range(1, 11)],
         coerce=int,
         widget=forms.RadioSelect,
     )
-    energie = forms.TypedChoiceField(
-        label="Energie (1–5, optional)",
-        choices=[(i, str(i)) for i in range(1, 6)],
-        coerce=int,
-        empty_value=None,
-        required=False,
-        widget=forms.RadioSelect,
-    )
+
+
+class BewertungForm(forms.ModelForm):
+    produktivitaet = _skala("Wie produktiv war der Tag? (1–10)")
+    zufriedenheit = _skala("Wie zufrieden bist du mit dem Tag? (1–10)")
 
     class Meta:
         model = Tagesbewertung
-        fields = ["score", "energie", "schlaf_h", "notiz"]
+        fields = ["produktivitaet", "zufriedenheit", "schlaf_h", "notiz"]
         widgets = {
             "notiz": forms.Textarea(attrs={"rows": 3}),
             "schlaf_h": forms.NumberInput(attrs={"step": "0.5", "min": "0", "max": "24"}),
