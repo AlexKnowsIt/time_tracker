@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -133,3 +136,37 @@ class Planblock(models.Model):
 
     def __str__(self):
         return f"Plan {self.kategorie} ab {self.start:%d.%m. %H:%M}"
+
+
+class ApiToken(models.Model):
+    """Persönliches Token für die JSON-API (und damit den MCP-Server).
+
+    Gespeichert wird nur der SHA-256-Hash. Das Token ist zufällig und lang (256 Bit), daher
+    reicht ein schneller Hash ohne Salt; die Suche per Hash ist zugleich der Vergleich.
+    """
+
+    PRAEFIX = "zt_"
+
+    nutzer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, help_text="Wofür das Token gedacht ist")
+    token_hash = models.CharField(max_length=64, unique=True)
+    erstellt = models.DateTimeField(auto_now_add=True)
+    zuletzt_genutzt = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "API-Tokens"
+        ordering = ["-erstellt"]
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def hash_von(klartext):
+        return hashlib.sha256(klartext.encode()).hexdigest()
+
+    @classmethod
+    def erzeugen(cls, nutzer, name):
+        """Legt ein Token an und gibt (ApiToken, Klartext) zurück. Der Klartext ist nur hier da."""
+        klartext = cls.PRAEFIX + secrets.token_urlsafe(32)
+        token = cls.objects.create(nutzer=nutzer, name=name, token_hash=cls.hash_von(klartext))
+        return token, klartext

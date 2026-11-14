@@ -1,0 +1,43 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Einstellungen · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<h1>Einstellungen</h1>
+
+<h2>API-Tokens</h2>
+<p>Mit einem Token greifen KI-Assistenten (MCP) auf die Zeiterfassung zu. Behandle es wie ein
+Passwort: Wer es hat, kann deine Daten lesen und ändern.</p>
+
+{% if neu %}
+<div class="feld" role="status">
+  <p><strong>Token „{{ neu.name }}“ erstellt.</strong> Kopiere es jetzt. Es wird nur dieses eine
+  Mal angezeigt und ist danach nicht mehr abrufbar.</p>
+  <p><code>{{ neu.klartext }}</code></p>
+</div>
+{% endif %}
+
+{% if tokens %}
+<ul>
+  {% for t in tokens %}
+  <li>
+    <strong>{{ t.name }}</strong>,
+    erstellt {{ t.erstellt|date:"d.m.Y H:i" }},
+    zuletzt genutzt {% if t.zuletzt_genutzt %}{{ t.zuletzt_genutzt|date:"d.m.Y H:i" }}{% else %}nie{% endif %}
+    <form method="post" action="{% url 'token_widerrufen' t.pk %}">{% csrf_token %}
+      <button class="klein-knopf" onclick="return confirm('Token „{{ t.name|escapejs }}“ widerrufen? Programme mit diesem Token verlieren sofort den Zugriff.')">Widerrufen</button></form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Noch keine Tokens.</p>
+{% endif %}
+
+<form method="post" class="formular">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="feld">
+    {{ form.name.label_tag }} {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <button class="knopf">Neues Token erzeugen</button>
+</form>
+{% endblock %}

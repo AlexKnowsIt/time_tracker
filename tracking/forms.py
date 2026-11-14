@@ -2,7 +2,7 @@ from django import forms
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Eintrag, Kategorie, Planblock, Tagesbewertung
+from .models import ApiToken, Eintrag, Kategorie, Planblock, Tagesbewertung
 
 DT_FORMAT = "%Y-%m-%dT%H:%M"
 DT_FORMATE = [DT_FORMAT, "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S"]
@@ -127,3 +127,11 @@ class BewertungForm(forms.ModelForm):
             "schlaf_h": forms.NumberInput(attrs={"step": "0.5", "min": "0", "max": "24"}),
         }
         labels = {"schlaf_h": "Schlaf (Stunden, optional)"}
+
+
+class TokenForm(forms.ModelForm):
+    class Meta:
+        model = ApiToken
+        fields = ["name"]
+        labels = {"name": "Name des Tokens"}
+        widgets = {"name": forms.TextInput(attrs={"placeholder": "z. B. Claude Desktop"})}

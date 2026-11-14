@@ -3,7 +3,7 @@ from datetime import date
 from django.contrib.auth import views as auth_views
 from django.urls import path, register_converter
 
-from . import views
+from . import api, views
 
 
 class IsoDatum:
@@ -47,7 +47,24 @@ urlpatterns = [
     path("plan/<int:pk>/", views.plan_speichern, name="plan_bearbeiten"),
     path("plan/<int:pk>/loeschen/", views.plan_loeschen, name="plan_loeschen"),
     path("muster/", views.muster, name="muster"),
+    path("einstellungen/", views.einstellungen, name="einstellungen"),
+    path(
+        "einstellungen/token/<int:pk>/widerrufen/", views.token_widerrufen, name="token_widerrufen"
+    ),
     path("messung/<int:pk>/loeschen/", views.messung_loeschen, name="messung_loeschen"),
     path("eintrag/<int:pk>/", views.eintrag_form, name="eintrag_bearbeiten"),
     path("eintrag/<int:pk>/loeschen/", views.eintrag_loeschen, name="eintrag_loeschen"),
+    # JSON-API (Bearer-Token), ohne Schrägstrich am Ende
+    path("api/v1/jetzt", api.jetzt),
+    path("api/v1/start", api.start),
+    path("api/v1/stopp", api.stopp),
+    path("api/v1/messung", api.messung),
+    path("api/v1/eintraege", api.eintraege),
+    path("api/v1/tag/<datum:datum>", api.tag),
+    path("api/v1/tag/<datum:datum>/bewertung", api.bewertung),
+    path("api/v1/woche/<datum:datum>", api.woche),
+    path("api/v1/muster", api.muster),
+    path("api/v1/plan", api.plan),
+    path("api/v1/plan/<int:pk>", api.plan_loeschen),
+    path("api/v1/<path:rest>", api.unbekannt),
 ]

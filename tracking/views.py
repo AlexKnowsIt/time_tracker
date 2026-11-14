@@ -6,12 +6,13 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from .auswertung import MIN_TAGE, vergleich
-from .forms import BewertungForm, EintragForm, PlanblockForm
+from .forms import BewertungForm, EintragForm, PlanblockForm, TokenForm
 from .merkmale import formatiere, tagesmerkmale
-from .models import Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
+from .models import ApiToken, Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
 from .plan import plan_vs_ist
 from .services import starte_eintrag, stoppe_eintrag
 from .zeit import dauer_text, tagesdatum, tagesgrenzen
@@ -105,6 +106,15 @@ def messung(request):
     return _antwort(request)
 
 
+def _planbloecke(nutzer, beginn, ende):
+    """Planblöcke, die [beginn, ende) berühren, nach Start sortiert."""
+    return list(
+        Planblock.objects.filter(nutzer=nutzer, start__lt=ende, ende__gt=beginn)
+        .select_related("kategorie")
+        .order_by("start")
+    )
+
+
 def _zeitleiste(eintraege, jetzt):
     """Blöcke und Lücken von erstem Start bis letztem Ende. flex-grow = Sekunden."""
     if not eintraege:
@@ -174,11 +184,7 @@ def tag(request, datum=None):
     wasser = sum(m.menge for m in messungen if m.typ == Messung.Typ.WASSER_ML)
     bewertung = Tagesbewertung.objects.filter(nutzer=request.user, datum=datum).first()
     # Plan/Ist ist keine Score-Statistik und erscheint immer, sobald es Planblöcke gibt.
-    planbloecke = list(
-        Planblock.objects.filter(nutzer=request.user, start__lt=ende, ende__gt=beginn)
-        .select_related("kategorie")
-        .order_by("start")
-    )
+    planbloecke = _planbloecke(request.user, beginn, ende)
     plan_ist = None
     if planbloecke:
         ist = _eintraege_im_zeitraum(request.user, beginn, ende)
@@ -273,16 +279,14 @@ def _nach_tagen(nutzer, von, bis):
     return eintraege, messungen
 
 
-@login_required
-def woche(request, datum=None):
-    jetzt = timezone.now()
-    datum = datum or tagesdatum(jetzt)
+def _woche_daten(nutzer, datum, jetzt):
+    """Montag bis Sonntag der Woche von ``datum``: je Tag Einträge, Bewertung, Deep-Work-Minuten."""
     montag = datum - timedelta(days=datum.weekday())
     sonntag = montag + timedelta(days=6)
-    eintraege, _ = _nach_tagen(request.user, montag, sonntag)
+    eintraege, _ = _nach_tagen(nutzer, montag, sonntag)
     bewertungen = {
         b.datum: b
-        for b in Tagesbewertung.objects.filter(nutzer=request.user, datum__range=(montag, sonntag))
+        for b in Tagesbewertung.objects.filter(nutzer=nutzer, datum__range=(montag, sonntag))
     }
     tage = []
     for i in range(7):
@@ -295,11 +299,18 @@ def woche(request, datum=None):
         tage.append(
             {
                 "datum": tag_datum,
-                "zeitleiste": _zeitleiste(tag_eintraege, jetzt),
+                "eintraege": tag_eintraege,
                 "bewertung": bewertung,
-                "deepwork": dauer_text(deepwork * 60) if deepwork is not None else None,
+                "deepwork_min": deepwork,
             }
         )
+    return montag, sonntag, tage
+
+
+@login_required
+def woche(request, datum=None):
+    jetzt = timezone.now()
+    montag, sonntag, tage = _woche_daten(request.user, datum or tagesdatum(jetzt), jetzt)
     return render(
         request,
         "tracking/woche.html",
@@ -308,7 +319,17 @@ def woche(request, datum=None):
             "sonntag": sonntag,
             "vorwoche": montag - timedelta(days=7),
             "folgewoche": montag + timedelta(days=7),
-            "tage": tage,
+            "tage": [
+                {
+                    "datum": t["datum"],
+                    "zeitleiste": _zeitleiste(t["eintraege"], jetzt),
+                    "bewertung": t["bewertung"],
+                    "deepwork": dauer_text(t["deepwork_min"] * 60)
+                    if t["deepwork_min"] is not None
+                    else None,
+                }
+                for t in tage
+            ],
         },
     )
 
@@ -320,19 +341,15 @@ ZIELGROESSEN = {
 MUSTER_TAGE = 180
 
 
-@login_required
-def muster(request):
-    ziel = request.GET.get("ziel")
-    if ziel not in ZIELGROESSEN:
-        ziel = "produktivitaet"
-    jetzt = timezone.now()
+def _muster_kontext(nutzer, ziel, jetzt):
+    """Auswertung für die Muster-Seite und die API; ``ziel`` muss in ZIELGROESSEN sein."""
     heute = tagesdatum(jetzt)
     von = heute - timedelta(days=MUSTER_TAGE - 1)
     # Ein Tag früher, damit auch der Vortag des ersten Tages bekannt ist.
     bewertungen = {
         b["datum"]: b
         for b in Tagesbewertung.objects.filter(
-            nutzer=request.user, datum__range=(von - timedelta(days=1), heute)
+            nutzer=nutzer, datum__range=(von - timedelta(days=1), heute)
         ).values("datum", "produktivitaet", "zufriedenheit", "schlaf_h")
     }
     kontext = {
@@ -345,9 +362,10 @@ def muster(request):
     bewertete = sorted(d for d in bewertungen if d >= von)
     if len(bewertete) < MIN_TAGE:
         kontext["fehlend"] = MIN_TAGE - len(bewertete)
-        return render(request, "tracking/muster.html", kontext)
+        kontext["bewertet"] = len(bewertete)
+        return kontext
 
-    eintraege, messungen = _nach_tagen(request.user, bewertete[0], bewertete[-1])
+    eintraege, messungen = _nach_tagen(nutzer, bewertete[0], bewertete[-1])
     tage = []
     for d in bewertete:
         m = tagesmerkmale(eintraege.get(d, []), messungen.get(d, []), jetzt)
@@ -370,7 +388,17 @@ def muster(request):
         ziel_gut=formatiere(ergebnis["ziel_gut"], "zahl"),
         ziel_schwach=formatiere(ergebnis["ziel_schwach"], "zahl"),
     )
-    return render(request, "tracking/muster.html", kontext)
+    return kontext
+
+
+@login_required
+def muster(request):
+    ziel = request.GET.get("ziel")
+    if ziel not in ZIELGROESSEN:
+        ziel = "produktivitaet"
+    return render(
+        request, "tracking/muster.html", _muster_kontext(request.user, ziel, timezone.now())
+    )
 
 
 # --- Plan vs. Ist (Wochenkalender) ---------------------------------------------
@@ -437,9 +465,7 @@ def plan_bloecke(request):
     if zeitraum is None:
         return JsonResponse({"fehler": "Ungültiger Zeitraum."}, status=400)
     von, bis = zeitraum
-    bloecke = Planblock.objects.filter(
-        nutzer=request.user, start__lt=bis, ende__gt=von
-    ).select_related("kategorie")
+    bloecke = _planbloecke(request.user, von, bis)
     return JsonResponse([_plan_event(b) for b in bloecke], safe=False)
 
 
@@ -483,3 +509,31 @@ def plan_speichern(request, pk=None):
 def plan_loeschen(request, pk):
     get_object_or_404(Planblock, pk=pk, nutzer=request.user).delete()
     return JsonResponse({"ok": True})
+
+
+# --- Einstellungen: API-Tokens ---------------------------------------------------
+
+
+@login_required
+@never_cache
+def einstellungen(request):
+    form = TokenForm(request.POST or None)
+    neu = None
+    if request.method == "POST" and form.is_valid():
+        # Bewusst kein Redirect (PRG): Der Klartext existiert nur hier und darf nicht in Session
+        # oder Datenbank zwischengelagert werden. Ein Neuladen legt höchstens ein weiteres Token an.
+        name = form.cleaned_data["name"]
+        neu = {"name": name, "klartext": ApiToken.erzeugen(request.user, name)[1]}
+        form = TokenForm()
+    return render(
+        request,
+        "tracking/einstellungen.html",
+        {"form": form, "neu": neu, "tokens": ApiToken.objects.filter(nutzer=request.user)},
+    )
+
+
+@login_required
+@require_POST
+def token_widerrufen(request, pk):
+    get_object_or_404(ApiToken, pk=pk, nutzer=request.user).delete()
+    return redirect("einstellungen")

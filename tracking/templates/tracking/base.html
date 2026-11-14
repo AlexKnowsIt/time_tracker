@@ -15,6 +15,7 @@
     <strong>Zeiterfassung</strong>
     {% if user.is_authenticated %}
     <span class="kopf-rechts">
+      <a href="{% url 'einstellungen' %}">Einstellungen</a>
       {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link">Abmelden</button></form>
     </span>
