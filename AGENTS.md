@@ -14,8 +14,13 @@ begründet es und passt das Zielbild an.
 
 ## Stack und Befehle
 
-- Python 3.13, Django 5.2 LTS, HTMX 2 per CDN, SQLite (WAL). Kein JS-Framework,
-  kein Build-Schritt.
+- Python 3.13, Django 5.2 LTS, HTMX 2, FullCalendar 6 und Chart.js 4 per CDN
+  (feste Version mit `integrity`), SQLite (WAL). Kein JS-Framework, kein
+  Build-Schritt, kein CSS-Framework.
+- Betrieb: gunicorn + WhiteNoise im Docker-Container, Datenbank im Volume
+  `/data`. CI in `.github/workflows/ci.yml`.
+- API unter `/api/v1/` (nur Bearer-Token, nie Session) und MCP-Server in
+  `mcp_server/` (Dependency-Group `mcp`).
 - Abhängigkeiten mit `uv`. Neue Abhängigkeiten nur mit gutem Grund.
 - Statistik mit der Standardbibliothek (`statistics`), solange es reicht.
 
@@ -27,7 +32,12 @@ uv run pytest
 uv run ruff check && uv run ruff format
 uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py demodaten demo   # Testdaten, nur für leere Nutzer
+uv sync --group mcp                      # für MCP-Server und dessen Tests
 ```
+
+Externe Bibliotheken sind in der Sandbox per CDN oft gesperrt. Für
+Playwright-Checks per `npm pack` holen und mit `page.route` unter der CDN-URL
+ausliefern.
 
 ## Struktur
 
@@ -61,6 +71,14 @@ Diese Punkte sind in Reviews aufgefallen und gelten für jede Änderung:
   `DJANGO_ALLOWED_HOSTS`, `DJANGO_DB_PATH` kommen aus der Umgebung.
 - **Keine N+1-Abfragen** in Listen- und Wochenansichten; mit
   `django_assert_max_num_queries` testen.
+- **API nur mit Bearer-Token.** Session-Cookies zählen dort nie, nur deshalb
+  ist `csrf_exempt` sicher. Tokens nur als SHA-256-Hash speichern, Klartext
+  einmal anzeigen. Web-Seiten behalten CSRF, auch bei `fetch` (`X-CSRFToken`).
+- **Logik nur einmal.** API, MCP und Seiten nutzen dieselben Forms, Services
+  und Auswertungsfunktionen. Nichts kopieren.
+- **Zwei Scores:** Produktivität und Zufriedenheit, beide 1–10, Fragen fest
+  formuliert. Kategorie-Arten: Deep Work, Shallow Work, Organisation, Pause,
+  Freizeit.
 - **Auswertungen als Hypothesen formulieren**, nie als Ursache. Mindestanzahl
   Tage beachten (`auswertung.MIN_TAGE`).
 
@@ -94,13 +112,16 @@ Bewährtes Vorgehen in diesem Projekt:
 ## Branches
 
 - `main`: Hauptbranch der Neuentwicklung.
-- `archiv-2020` (und vorerst `master`): unveränderter Stand des ersten
-  Versuchs von 2020. Nicht ändern.
+- `archiv-2021` (und vorerst `master`): unveränderter Stand des Prototyps von
+  2020/21 (Django REST Framework, FullCalendar, Chart.js). Nicht ändern. Die
+  Ideen daraus (zwei Scores, Deep/Shallow Work, Plan vs. Ist, API) sind
+  übernommen, der Code bewusst nicht (fehlende Nutzertrennung in den APIs).
 
 ## Stand
 
-- Phase 0 und 1 umgesetzt: Grundgerüst, Modelle, Seiten „Jetzt“, „Heute“,
-  „Tagesabschluss“, Login, PWA-Manifest.
-- Phase 2 (Tagesmerkmale, Woche, Vergleich guter und schwacher Tage, Testdaten):
-  siehe `docs/zielbild.md`.
-- Offen: Deployment, Phase 3 (Korrelationen, Selbstexperimente).
+- Umgesetzt: Phase 0–2, Phase 4 (Plan vs. Ist), Phase 4b (API und MCP),
+  Betrieb (Docker, CI). Details und Reihenfolge in `docs/zielbild.md`.
+- Offen: Deployment auf den eigenen Server (Cloudflare Access braucht für
+  `/api/` eine Ausnahme oder ein Service-Token), Phase 3 (Korrelationen,
+  Selbstexperimente), Löschen von Einträgen/Messungen per API, Test von
+  Drag & Drop auf Touch-Geräten, Kalender-Zeitzone fest auf `TIME_ZONE`.
