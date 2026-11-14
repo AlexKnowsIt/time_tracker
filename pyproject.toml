@@ -12,6 +12,9 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest", "pytest-django", "ruff"]
+mcp = [
+    "mcp>=1.12,<2",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "zeiterfassung.settings_test"

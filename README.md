@@ -5,8 +5,9 @@ Trinkmenge (je ein Tipp), abends bewertet man den Tag mit zwei Scores: Produktiv
 Zufriedenheit. Daraus zeigt die App mit der Zeit, welche Muster gute von schwachen Tagen
 unterscheiden. Die Ergebnisse sind Hypothesen („Unterschiede, keine Ursachen“).
 
-Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md). Stand: Phase 0 bis 2
-und Plan vs. Ist umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI, Plankalender). Als
+Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md). Stand: Phase 0 bis 2,
+Plan vs. Ist sowie API und MCP umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI,
+Plankalender, JSON-API, MCP-Server). Als
 Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt unverändert im Branch
 `archiv-2021`.
 
@@ -33,6 +34,9 @@ Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt u
 - **Kategorien** haben eine Art: Deep Work, Shallow Work, Organisation, Pause, Freizeit.
   Pflege im Admin; `standardkategorien` legt Deep Work, Mails, Meetings, Organisation, Pause,
   Sport und Freizeit an.
+- **Einstellungen** (`/einstellungen/`, Link im Kopf): API-Tokens erzeugen, auflisten, widerrufen.
+- **API und MCP** (`/api/v1/`, `mcp_server/`): KI-Assistenten bedienen die Zeiterfassung, siehe
+  „KI-Assistenten (MCP)“.
 - Auf dem Handy als Web-App installierbar (Manifest). HTMX kommt per CDN.
 
 ## Setup lokal
@@ -51,10 +55,58 @@ uv run python manage.py runserver   # App: http://127.0.0.1:8000/, Admin: /admin
 Prüfen vor jedem Commit:
 
 ```
+uv sync --group mcp   # einmalig, damit die MCP-Tests laufen (sonst übersprungen)
 uv run pytest
 uv run ruff check && uv run ruff format
 DJANGO_DEBUG=1 uv run python manage.py makemigrations --check --dry-run
 ```
+
+## KI-Assistenten (MCP)
+
+Der MCP-Server lässt Claude Code oder Claude Desktop die Zeiterfassung bedienen („starte Deep
+Work“, „trage gestern 9 bis 10 Uhr Mails nach“, „wie war meine Woche?“). Er ruft die JSON-API
+(`/api/v1/`) auf; die Tools heißen `aktueller_stand`, `timer_starten`, `timer_stoppen`,
+`trinken_erfassen`, `eintrag_nachtragen`, `tag_abrufen`, `tag_bewerten`, `woche_abrufen`,
+`muster_abrufen`, `plan_abrufen`, `planblock_anlegen`, `planblock_loeschen`.
+
+1. In der App unter **Einstellungen** ein Token erzeugen und sofort kopieren (wird nur einmal
+   angezeigt, gespeichert wird nur der Hash).
+2. Claude Code (im Projektordner; ZEITERFASSUNG_URL ohne Schrägstrich am Ende):
+
+```
+claude mcp add zeiterfassung \
+  --env ZEITERFASSUNG_URL=https://zeit.example.org \
+  --env ZEITERFASSUNG_TOKEN=zt_... \
+  -- uv run --project /pfad/zu/time_tracker --group mcp python /pfad/zu/time_tracker/mcp_server/server.py
+```
+
+   Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "zeiterfassung": {
+      "command": "uv",
+      "args": ["run", "--project", "/pfad/zu/time_tracker", "--group", "mcp",
+               "python", "/pfad/zu/time_tracker/mcp_server/server.py"],
+      "env": {
+        "ZEITERFASSUNG_URL": "https://zeit.example.org",
+        "ZEITERFASSUNG_TOKEN": "zt_..."
+      }
+    }
+  }
+}
+```
+
+Lokal zum Ausprobieren: `ZEITERFASSUNG_URL=http://127.0.0.1:8000`. Mit `--http [--port 8765]`
+läuft der Server stattdessen als streamable-http auf `127.0.0.1` (ohne eigene Authentifizierung,
+deshalb nur lokal binden). Ohne die beiden Variablen bricht er beim Start mit einer klaren
+Meldung ab.
+
+**Das Token wie ein Passwort behandeln:** Wer es hat, kann alle Daten lesen und ändern. Nicht
+einchecken, nicht in Chats einfügen; bei Verdacht unter Einstellungen widerrufen. Der Assistent
+sieht die Daten, die die Tools zurückgeben. Die API selbst: Header `Authorization: Bearer <token>`,
+JSON rein und raus, Fehler als `{"fehler": …, "felder": {…}}`; Session-Logins gelten dort nicht.
 
 ## Testdaten
 

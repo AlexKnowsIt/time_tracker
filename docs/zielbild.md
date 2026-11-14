@@ -276,6 +276,31 @@ davon abweicht.
   der Tagesgrenze 04:00 ab). Keine Score-Statistik, daher immer sichtbar.
 - Noch offen: Abweichung als Merkmal für die Auswertung, Soll je Wochentag als Vorlage.
 
+### Phase 4b: API und MCP – umgesetzt
+
+Ziel: KI-Assistenten (Claude Code, Claude Desktop) bedienen die Zeiterfassung per Sprache.
+
+- Modell `ApiToken(nutzer, name, token_hash, erstellt, zuletzt_genutzt)`. Das Token
+  (`zt_` + 256 Bit Zufall) wird nur als SHA-256-Hash gespeichert und genau einmal angezeigt.
+  Verwaltung auf der Seite „Einstellungen“ (`/einstellungen/`): erzeugen, auflisten, widerrufen.
+- JSON-API unter `/api/v1/` in `tracking/api.py`, plain Django ohne DRF. Auth nur per
+  `Authorization: Bearer <token>`; Session-Cookies zählen dort nie (deshalb ist `csrf_exempt`
+  sicher). Fehler als `{"fehler": …, "felder": {…}}`. Validierung und Auswertung kommen aus
+  `EintragForm`, `BewertungForm`, `PlanblockForm`, `services.py`, `merkmale.py`, `auswertung.py`;
+  die Seiten-Views und die API teilen sich dieselben Hilfsfunktionen (`_woche_daten`,
+  `_muster_kontext`, `_planbloecke`). Endpunkte: `jetzt`, `start`, `stopp`, `messung`,
+  `eintraege` (nachtragen), `tag/<datum>`, `tag/<datum>/bewertung`, `woche/<datum>`, `muster`,
+  `plan` (GET, POST), `plan/<id>` (DELETE).
+- Die Regeln gelten unverändert: Tagesmerkmale erst nach der Bewertung (Score vor Statistik),
+  keine überlappenden Einträge, alles nutzergefiltert (fremde IDs: 404), Muster ab `MIN_TAGE`.
+- MCP-Server `mcp_server/server.py` (offizielles Python-SDK `mcp`, FastMCP, Dependency-Group
+  `mcp`, nicht in den Produktionsabhängigkeiten). Zwölf Tools mit deutschen Beschreibungen, die
+  die API per `urllib` aufrufen. stdio ist Standard; `--http` bindet nur an 127.0.0.1.
+- Abweichungen: Das Token erscheint nach dem POST ohne Redirect, damit der Klartext nie in
+  Session oder Datenbank landet. Das SDK ist auf `mcp<2` begrenzt (v2 hat FastMCP umbenannt).
+  Kein Rate-Limiting (Einzelnutzer hinter Cloudflare Access); Upgrade-Pfad steht in `api.py`.
+- Noch offen: Einträge und Messungen per API löschen (bisher nur in der Oberfläche).
+
 ### Phase 5: Optional
 
 - Wochenbericht per LLM, CSV-Export, Regression.
