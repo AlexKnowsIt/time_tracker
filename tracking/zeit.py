@@ -17,3 +17,8 @@ def tagesgrenzen(datum: date) -> tuple[datetime, datetime]:
     beginn = timezone.make_aware(datetime.combine(datum, time(4)))
     ende = timezone.make_aware(datetime.combine(datum + timedelta(days=1), time(4)))
     return beginn, ende
+
+
+def dauer_text(sekunden) -> str:
+    minuten = int(sekunden // 60)
+    return f"{minuten // 60} h {minuten % 60:02d} min" if minuten >= 60 else f"{minuten} min"

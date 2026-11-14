@@ -1,0 +1,22 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Woche · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<div class="tagnav">
+  <a href="{% url 'woche' vorwoche %}" aria-label="Vorwoche">‹ Vorwoche</a>
+  <h1>{{ montag|date:"d.m." }}–{{ sonntag|date:"d.m.Y" }}</h1>
+  <a href="{% url 'woche' folgewoche %}" aria-label="Folgewoche">Folgewoche ›</a>
+</div>
+{% for t in tage %}
+<section class="karte" aria-label="{{ t.datum|date:'l, d.m.' }}">
+  <h2><a href="{% url 'tag' t.datum %}">{{ t.datum|date:"l, d.m." }}</a></h2>
+  {% if t.zeitleiste %}{% include "tracking/_zeitleiste.html" with zeitleiste=t.zeitleiste %}{% else %}<p class="klein">Keine Einträge.</p>{% endif %}
+  {% if t.bewertung %}
+  <p>Deep Work: <strong>{{ t.deepwork }}</strong>
+    · Produktivität <strong>{{ t.bewertung.produktivitaet }}/10</strong>
+    · Zufriedenheit <strong>{{ t.bewertung.zufriedenheit }}/10</strong></p>
+  {% else %}
+  <p class="klein">Noch nicht bewertet. <a href="{% url 'abschluss' t.datum %}">Tag bewerten</a></p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

@@ -6,9 +6,9 @@ warum die Architektur so gewählt ist und in welchen Schritten es entsteht.
 ## 1. Worum es geht
 
 Ich erfasse über den Tag, was ich mache, wann ich Pause mache und wie viel ich
-trinke. Am Abend bewerte ich, wie produktiv sich der Tag angefühlt hat. Die App
+trinke. Am Abend bewerte ich den Tag mit zwei Scores: wie produktiv er war und wie zufrieden ich mit ihm bin. Die App
 zeigt mir mit der Zeit, welche Muster gute Tage von schlechten unterscheiden:
-zum Beispiel Pausenzeitpunkte, lange Fokusblöcke statt Zerstückelung, Trinkmenge
+zum Beispiel Pausenzeitpunkte, lange Deep-Work-Blöcke statt Zerstückelung, Trinkmenge
 oder Arbeitsbeginn.
 
 **Erfolgskriterium:** Nach zwei Wochen sehe ich erste belastbare Unterschiede
@@ -20,7 +20,7 @@ Handvoll konkreter Hypothesen, die ich gezielt ausprobieren kann.
 Solche Projekte scheitern fast immer daran, dass man nach einer Woche aufhört
 zu erfassen. Deshalb gilt für jede Entscheidung:
 
-- **Jede Erfassung dauert unter 5 Sekunden.** Ein Tipp auf „Jetzt: Fokus“ beendet
+- **Jede Erfassung dauert unter 5 Sekunden.** Ein Tipp auf „Jetzt: Deep Work“ beendet
   den laufenden Block und startet den neuen. „+250 ml“ ist ein Tipp.
 - **Vergessen ist erlaubt.** Einträge lassen sich nachträglich korrigieren,
   Lücken werden in der Tagesansicht sichtbar und können beim Tagesabschluss
@@ -50,7 +50,7 @@ zu erfassen. Deshalb gilt für jede Entscheidung:
 - **Auswertung mit der Standardbibliothek.** `statistics.correlation(x, y,
   method="ranked")` liefert seit Python 3.12 die Spearman-Korrelation. Bei
   einigen hundert Tagen braucht es weder pandas noch scipy. Erst bei
-  Regressionen in Phase 4 kommt eine Bibliothek dazu.
+  Regressionen in Phase 5 kommt eine Bibliothek dazu.
 - **Diagramme:** Die Zeitleiste ist reines HTML/CSS. Für Verläufe reicht
   Chart.js, eingebunden per CDN.
 - **PWA-Manifest**, damit die App auf dem Handy wie eine App startet.
@@ -88,8 +88,8 @@ stellen.
 
 ```
 Kategorie
-  name            "Fokus: Projekt X", "Meetings", "Mails", "Pause", "Sport"
-  art             fokus | routine | pause | privat
+  name            "Deep Work", "Mails", "Meetings", "Organisation", "Pause", "Sport", "Freizeit"
+  art             deepwork | shallowwork | organisation | pause | freizeit
   farbe
   aktiv           alte Kategorien ausblenden statt löschen
   nutzer → User
@@ -110,8 +110,8 @@ Messung           zählbare Dinge zu einem Zeitpunkt
 
 Tagesbewertung    einmal pro Tag, beim Tagesabschluss
   datum           eindeutig pro Nutzer
-  score           1–10: „Wie produktiv hat sich der Tag angefühlt?“
-  energie         1–5, optional
+  produktivitaet  1–10: „Wie produktiv war der Tag?“
+  zufriedenheit   1–10: „Wie zufrieden bist du mit dem Tag?“
   schlaf_h        optional
   notiz           „Was hat geholfen, was hat gestört?“
   nutzer → User
@@ -122,7 +122,10 @@ Begründungen:
 - **Kategorien statt fester Spalten.** Die alte Version hatte drei feste Felder.
   Jede neue Tätigkeit hätte eine Migration gebraucht. Jetzt ist es ein Datensatz.
 - **`art` an der Kategorie** fasst viele Kategorien für die Auswertung zusammen:
-  „Fokuszeit“ ist die Summe aller Kategorien der Art `fokus`.
+  „Deep-Work-Zeit“ ist die Summe aller Kategorien der Art `deepwork`. Die Arten
+  stammen aus dem Prototyp von 2021: Deep Work (konzentriert, ungestört) gegen Shallow Work
+  (Mails, Meetings), dazu Organisation, Pause und Freizeit. Arbeits-Arten sind Deep Work,
+  Shallow Work und Organisation.
 - **Pausen werden aktiv erfasst** (Kategorie der Art `pause`). Eine Lücke
   zwischen Einträgen ist „nicht erfasst“ und keine Pause. Sonst verfälscht jede
   vergessene Erfassung die Statistik.
@@ -140,13 +143,16 @@ Kennzahlen. Das ist die Grundlage aller Auswertungen.
 
 | Bereich | Merkmal |
 |---|---|
-| Umfang | Fokuszeit gesamt, erfasste Zeit gesamt, Anteil nicht erfasst |
+| Umfang | Deep-Work-Zeit, Shallow-Work-Zeit, erfasste Zeit gesamt, Anteil nicht erfasst |
 | Zeitpunkte | Beginn des ersten Arbeitsblocks, Ende des letzten |
-| Fokus | Anzahl Fokusblöcke, längster Block, mittlere Blocklänge |
-| Zerstückelung | Kategoriewechsel pro Arbeitsstunde, Anzahl Blöcke unter 15 min |
-| Pausen | Anzahl, Gesamtdauer, Uhrzeit der ersten Pause, längste Strecke ohne Pause |
+| Deep Work | Anzahl Deep-Work-Blöcke (direkt anschließende Einträge = ein Block), längster Block, mittlere Blocklänge |
+| Zerstückelung | Kategoriewechsel pro Arbeitsstunde, Anzahl Arbeitsblöcke unter 15 min |
+| Pausen | Anzahl, Gesamtdauer, Uhrzeit der ersten Pause, längste Strecke ohne Pause (nur Arbeits-Arten) |
 | Trinken | Wasser gesamt, Wasser bis 14 Uhr |
-| Kontext | Wochentag, Schlaf, Score des Vortags |
+| Kontext | Wochentag, Schlaf, Produktivität des Vortags |
+
+Fehlende Werte (zum Beispiel keine Pause, kein Wasser erfasst) sind `None` und fließen nicht
+in Mittelwerte ein.
 
 Neue Merkmale sind eine neue Funktion, keine Datenbankänderung.
 
@@ -157,24 +163,26 @@ Die Stufen bauen aufeinander auf. Jede ist für sich nützlich.
 ### Stufe 1, ab Tag 1: Spiegel
 
 - Zeitleiste des Tages mit farbigen Blöcken und sichtbaren Lücken.
-- Wochenansicht: Zeitleisten untereinander, daneben der Score.
+- Wochenansicht: Zeitleisten untereinander, daneben Deep-Work-Zeit und beide Scores.
 
 Schon das bewusste Hinschauen verändert Verhalten. Das ist der schnellste
 Nutzen und braucht keine Statistik.
 
 ### Stufe 2, ab ca. 14 bewerteten Tagen: Gute gegen schlechte Tage
 
-Die Tage werden nach Score in ein oberes und ein unteres Drittel geteilt. Für
+Die Tage werden nach einer wählbaren Zielgröße (Produktivität oder Zufriedenheit) in ein
+oberes und ein unteres Drittel geteilt. Sortiert wird nach dem Effekt (Differenz der
+Gruppenmittel geteilt durch die Streuung des Merkmals über alle Tage). Für
 jedes Merkmal zeigt die App den Mittelwert beider Gruppen nebeneinander:
 
-> An deinen besten Tagen: erste Pause um 10:40, längster Fokusblock 95 min.
-> An deinen schwächsten Tagen: erste Pause um 12:50, längster Fokusblock 40 min.
+> An deinen besten Tagen: erste Pause um 10:40, längster Deep-Work-Block 95 min.
+> An deinen schwächsten Tagen: erste Pause um 12:50, längster Deep-Work-Block 40 min.
 
 Das ist robust, braucht wenig Daten und ist sofort verständlich.
 
 ### Stufe 3, ab ca. 30 Tagen: Korrelationen mit Vorsicht
 
-- Spearman-Korrelation jedes Merkmals mit dem Score (rangbasiert, unempfindlich
+- Spearman-Korrelation jedes Merkmals mit Produktivität bzw. Zufriedenheit (rangbasiert, unempfindlich
   gegen Ausreißer).
 - Angezeigt werden nur Merkmale mit |r| ≥ 0,3, immer mit der Anzahl Tage.
 - Formuliert als Hypothese, nie als Befund: „Möglicher Zusammenhang“.
@@ -188,7 +196,7 @@ als passives Sammeln.
 
 - Ich lege eine Regel fest, zum Beispiel „Erste Pause vor 11 Uhr“, und einen
   Zeitraum von zwei Wochen.
-- Die App vergleicht den Score im Experimentzeitraum mit den zwei Wochen davor
+- Die App vergleicht die Scores im Experimentzeitraum mit den zwei Wochen davor
   und zeigt, an wie vielen Tagen ich die Regel eingehalten habe.
 - Dafür kommt ein kleines Modell `Experiment(titel, regel, start, ende)` dazu.
 
@@ -203,8 +211,10 @@ als passives Sammeln.
 
 ### Regeln für saubere Daten
 
-- Der Score wird abgegeben, **bevor** man die Statistik des Tages sieht.
-- Die Score-Frage bleibt immer gleich formuliert.
+- Beide Scores werden abgegeben, **bevor** man die Statistik des Tages sieht (auch die
+  Deep-Work-Zeit der Wochenansicht erscheint erst nach der Bewertung).
+- Die Score-Fragen bleiben immer gleich formuliert: „Wie produktiv war der Tag?“ und
+  „Wie zufrieden bist du mit dem Tag?“.
 - Tage ohne Bewertung fließen nicht in die Auswertung ein.
 
 ## 7. Oberfläche
@@ -213,9 +223,9 @@ als passives Sammeln.
 |---|---|
 | **Jetzt** (Startseite) | Laufender Block mit Dauer, darunter große Knöpfe der häufigsten Kategorien, „Pause“, „Stopp“, „+250 ml Wasser“ |
 | **Heute** | Zeitleiste, Einträge bearbeiten, Lücken füllen |
-| **Tagesabschluss** | Score, Energie, Schlaf, Notiz. Danach die Zusammenfassung des Tages |
-| **Woche** | Zeitleisten untereinander mit Score |
-| **Muster** | Stufen 2 und 3, sobald genug Daten da sind. Vorher: „Noch 6 Tage bis zur ersten Auswertung“ |
+| **Tagesabschluss** | Produktivität und Zufriedenheit (je 1–10), Schlaf, Notiz. Danach die Zusammenfassung des Tages |
+| **Woche** | Zeitleisten untereinander mit Deep-Work-Zeit und beiden Scores |
+| **Muster** | Stufen 2 und 3, sobald genug Daten da sind (Umschalter Produktivität/Zufriedenheit). Vorher: „Noch 6 bewertete Tage bis zur ersten Auswertung“ |
 | **Admin** | Kategorien pflegen, Daten korrigieren |
 
 ## 8. Umsetzung in Phasen
@@ -238,18 +248,29 @@ als passives Sammeln.
 **Danach sofort täglich nutzen.** Jeder Tag ohne Erfassung verschiebt die
 Auswertung.
 
-### Phase 2: Spiegel und erste Muster (nach ca. 2 Wochen Daten)
+### Phase 2: Spiegel und erste Muster (nach ca. 2 Wochen Daten) – umgesetzt
 
 - `merkmale.py` mit Tests.
 - Wochenansicht.
 - Vergleich gute gegen schlechte Tage.
+- Testdaten per `manage.py demodaten` mit eingebautem Muster.
+- Betrieb: Docker (gunicorn, WhiteNoise, SQLite-Volume) und CI.
 
 ### Phase 3: Hypothesen und Experimente (nach ca. 4 Wochen)
 
 - Korrelationsansicht mit den Vorsichtsregeln.
 - Modell und Ansicht für Experimente.
 
-### Phase 4: Optional
+### Phase 4: Plan vs. Ist (vorgemerkt, noch nicht gebaut)
+
+Idee aus dem Prototyp von 2021: Ist/Soll. Ich plane den Tag (Soll je Art oder Kategorie,
+zum Beispiel „3 h Deep Work“) und sehe am Abend, wie weit das Ist davon abweicht.
+
+- Modell für das Soll pro Tag oder Wochentag, Vergleich mit den Tagesmerkmalen.
+- Abweichung als zusätzliches Merkmal für die Auswertung.
+- Erst nach Phase 3 konzipieren, wenn klar ist, welche Zielwerte sich bewähren.
+
+### Phase 5: Optional
 
 - Wochenbericht per LLM, CSV-Export, Regression.
 
@@ -263,7 +284,7 @@ Auswertung.
 
 ## 10. Branch-Strategie
 
-- `master` bleibt unverändert als Erinnerung an die erste Version von 2020.
-- Die Neuentwicklung läuft auf einem eigenen Branch, der später zum neuen
-  Hauptbranch wird. Vorgeschlagen: neuer Branch `main` als GitHub-Standard,
-  `master` umbenannt in `archiv-2020`.
+- `main` ist der Hauptbranch der Neuentwicklung.
+- `archiv-2021` enthält den unveränderten Prototyp (Django, Deep/Shallow Work, zwei Scores,
+  Ist/Soll). Daraus stammen die Ideen für Deep Work, zwei Scores und Plan vs. Ist. Nicht ändern.
+- `master` bleibt vorerst als Erinnerung an die erste Version von 2020 stehen.

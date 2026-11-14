@@ -25,6 +25,8 @@
   <nav class="tabs" aria-label="Hauptnavigation">
     <a href="{% url 'jetzt' %}" {% if request.resolver_match.url_name == 'jetzt' %}aria-current="page"{% endif %}>Jetzt</a>
     <a href="{% url 'heute' %}" {% if request.resolver_match.url_name in 'heute tag eintrag_neu eintrag_bearbeiten' %}aria-current="page"{% endif %}>Heute</a>
+    <a href="{% url 'woche_aktuell' %}" {% if request.resolver_match.url_name in 'woche_aktuell woche' %}aria-current="page"{% endif %}>Woche</a>
+    <a href="{% url 'muster' %}" {% if request.resolver_match.url_name == 'muster' %}aria-current="page"{% endif %}>Muster</a>
     <a href="{% url 'abschluss_heute' %}" {% if request.resolver_match.url_name == 'abschluss' %}aria-current="page"{% endif %}>Abschluss</a>
   </nav>
   {% endif %}

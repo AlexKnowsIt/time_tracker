@@ -8,18 +8,15 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from .auswertung import MIN_TAGE, vergleich
 from .forms import BewertungForm, EintragForm
+from .merkmale import formatiere, tagesmerkmale
 from .models import Eintrag, Kategorie, Messung, Tagesbewertung
 from .services import starte_eintrag, stoppe_eintrag
-from .zeit import tagesdatum, tagesgrenzen
+from .zeit import dauer_text, tagesdatum, tagesgrenzen
 
 # Messungs-Knöpfe: Typ -> Menge pro Tipp
 MESSUNG_KNOEPFE = {Messung.Typ.WASSER_ML: 250, Messung.Typ.KAFFEE: 1}
-
-
-def dauer_text(sekunden):
-    minuten = int(sekunden // 60)
-    return f"{minuten // 60} h {minuten % 60:02d} min" if minuten >= 60 else f"{minuten} min"
 
 
 def manifest(request):
@@ -245,3 +242,120 @@ def messung_loeschen(request, pk):
     datum = tagesdatum(m.zeitpunkt)
     m.delete()
     return redirect("tag", datum=datum)
+
+
+def _nach_tagen(nutzer, von, bis):
+    """Einträge und Messungen der Tage von..bis (inklusive) mit je einer Abfrage, nach Tag."""
+    beginn, ende = tagesgrenzen(von)[0], tagesgrenzen(bis)[1]
+    eintraege, messungen = {}, {}
+    for e in (
+        Eintrag.objects.filter(nutzer=nutzer, start__gte=beginn, start__lt=ende)
+        .select_related("kategorie")
+        .order_by("start")
+    ):
+        eintraege.setdefault(tagesdatum(e.start), []).append(e)
+    for m in Messung.objects.filter(
+        nutzer=nutzer, zeitpunkt__gte=beginn, zeitpunkt__lt=ende
+    ).order_by("zeitpunkt"):
+        messungen.setdefault(tagesdatum(m.zeitpunkt), []).append(m)
+    return eintraege, messungen
+
+
+@login_required
+def woche(request, datum=None):
+    jetzt = timezone.now()
+    datum = datum or tagesdatum(jetzt)
+    montag = datum - timedelta(days=datum.weekday())
+    sonntag = montag + timedelta(days=6)
+    eintraege, _ = _nach_tagen(request.user, montag, sonntag)
+    bewertungen = {
+        b.datum: b
+        for b in Tagesbewertung.objects.filter(nutzer=request.user, datum__range=(montag, sonntag))
+    }
+    tage = []
+    for i in range(7):
+        tag_datum = montag + timedelta(days=i)
+        tag_eintraege = eintraege.get(tag_datum, [])
+        bewertung = bewertungen.get(tag_datum)
+        deepwork = None
+        if bewertung:  # Statistik des Tages erst nach der Bewertung (AGENTS.md)
+            deepwork = tagesmerkmale(tag_eintraege, [], jetzt)["deepwork_min"]
+        tage.append(
+            {
+                "datum": tag_datum,
+                "zeitleiste": _zeitleiste(tag_eintraege, jetzt),
+                "bewertung": bewertung,
+                "deepwork": dauer_text(deepwork * 60) if deepwork is not None else None,
+            }
+        )
+    return render(
+        request,
+        "tracking/woche.html",
+        {
+            "montag": montag,
+            "sonntag": sonntag,
+            "vorwoche": montag - timedelta(days=7),
+            "folgewoche": montag + timedelta(days=7),
+            "tage": tage,
+        },
+    )
+
+
+ZIELGROESSEN = {
+    "produktivitaet": "Produktivität",
+    "zufriedenheit": "Zufriedenheit",
+}
+MUSTER_TAGE = 180
+
+
+@login_required
+def muster(request):
+    ziel = request.GET.get("ziel")
+    if ziel not in ZIELGROESSEN:
+        ziel = "produktivitaet"
+    jetzt = timezone.now()
+    heute = tagesdatum(jetzt)
+    von = heute - timedelta(days=MUSTER_TAGE - 1)
+    # Ein Tag früher, damit auch der Vortag des ersten Tages bekannt ist.
+    bewertungen = {
+        b["datum"]: b
+        for b in Tagesbewertung.objects.filter(
+            nutzer=request.user, datum__range=(von - timedelta(days=1), heute)
+        ).values("datum", "produktivitaet", "zufriedenheit", "schlaf_h")
+    }
+    kontext = {
+        "ziel": ziel,
+        "ziel_label": ZIELGROESSEN[ziel],
+        "ziele": ZIELGROESSEN,
+        "tage_max": MUSTER_TAGE,
+        "min_tage": MIN_TAGE,
+    }
+    bewertete = sorted(d for d in bewertungen if d >= von)
+    if len(bewertete) < MIN_TAGE:
+        kontext["fehlend"] = MIN_TAGE - len(bewertete)
+        return render(request, "tracking/muster.html", kontext)
+
+    eintraege, messungen = _nach_tagen(request.user, bewertete[0], bewertete[-1])
+    tage = []
+    for d in bewertete:
+        m = tagesmerkmale(eintraege.get(d, []), messungen.get(d, []), jetzt)
+        b = bewertungen[d]
+        m["schlaf_h"] = float(b["schlaf_h"]) if b["schlaf_h"] is not None else None
+        vortag = bewertungen.get(d - timedelta(days=1))
+        m["produktivitaet_vortag"] = vortag["produktivitaet"] if vortag else None
+        tage.append((b, m))
+    ergebnis = vergleich(tage, ziel)
+    ergebnis["zeilen"] = [
+        {
+            **z,
+            "gut_text": formatiere(z["gut"], z["format"]),
+            "schwach_text": formatiere(z["schwach"], z["format"]),
+        }
+        for z in ergebnis["zeilen"]
+    ]
+    kontext.update(
+        ergebnis=ergebnis,
+        ziel_gut=formatiere(ergebnis["ziel_gut"], "zahl"),
+        ziel_schwach=formatiere(ergebnis["ziel_schwach"], "zahl"),
+    )
+    return render(request, "tracking/muster.html", kontext)
