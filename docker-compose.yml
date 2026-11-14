@@ -1,0 +1,12 @@
+services:
+  zeiterfassung:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - daten:/data  # SQLite-Datei (DJANGO_DB_PATH=/data/db.sqlite3); Backup = Datei kopieren
+    restart: unless-stopped
+
+volumes:
+  daten:

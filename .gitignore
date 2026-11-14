@@ -6,3 +6,4 @@ db.sqlite3*
 .ruff_cache/
 .pytest_cache/
 .vscode/
+staticfiles/
