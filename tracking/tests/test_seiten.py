@@ -237,9 +237,9 @@ def test_woche_enthaelt_diagrammdaten(client, nutzer, kat):
 def test_muster_enthaelt_verlaufsdaten(client, nutzer, kat):
     bewerte_tage(nutzer, kat, 18)
     daten = _json_script(client.get(reverse("muster")).content.decode(), "verlauf-daten")
-    assert len(daten["tage"]) == 90
+    assert len(daten["tage"]) == 19  # vom ersten bewerteten Tag (vor 18 Tagen) bis heute
     for schluessel in ("produktivitaet", "zufriedenheit"):
-        assert len(daten[schluessel]) == 90 and len(daten["schnitt_" + schluessel]) == 90
+        assert len(daten[schluessel]) == 19 and len(daten["schnitt_" + schluessel]) == 19
     assert sum(w is not None for w in daten["produktivitaet"]) == 18
     assert daten["tage"][-1] == tagesdatum(timezone.now()).isoformat()
     # gleitender 7-Tage-Schnitt liegt innerhalb der Tageswerte (1..10)

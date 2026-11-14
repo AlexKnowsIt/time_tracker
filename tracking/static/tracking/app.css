@@ -168,6 +168,8 @@ body:not(.mit-navigation) .kopf { justify-content: center; }
   .tabs a:not(.marke) { flex: none; flex-direction: row; justify-content: flex-start; gap: var(--s3); min-height: 48px; padding: 0 var(--s3); font-size: .9375rem; }
   .tabs a:not(.marke):hover { background: var(--flaeche-2); color: var(--text); }
   .tabs a[aria-current] { background: var(--akzent-weich); color: var(--akzent); }
+  .kopf-titel strong { display: none; }
+  .kopf-datum { font-size: .9375rem; }
   .kopf, main { padding-left: var(--s8); padding-right: var(--s8); }
   main.breit { max-width: none; }
   h1 { font-size: 1.75rem; }

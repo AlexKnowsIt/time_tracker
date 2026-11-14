@@ -483,7 +483,8 @@ def _verlauf(nutzer, jetzt):
     }
     if sum(1 for d in werte if d >= von) < 2:
         return None
-    tage = [von + timedelta(days=i) for i in range(VERLAUF_TAGE)]
+    erster = min(d for d in werte if d >= von)  # Achse beginnt am ersten bewerteten Tag
+    tage = [erster + timedelta(days=i) for i in range((heute - erster).days + 1)]
 
     def schnitt(key, tag):
         vals = [werte[d][key] for d in (tag - timedelta(days=j) for j in range(7)) if d in werte]
