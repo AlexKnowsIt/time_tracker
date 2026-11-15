@@ -7,3 +7,4 @@ db.sqlite3*
 .pytest_cache/
 .vscode/
 staticfiles/
+.claude/worktrees/
