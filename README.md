@@ -1,169 +1,171 @@
 # Zeiterfassung
 
-Persönliche Zeiterfassung mit Tagesauswertung. Über den Tag erfasst man Tätigkeiten, Pausen und
-Trinkmenge (je ein Tipp), abends bewertet man den Tag mit zwei Scores: Produktivität und
-Zufriedenheit. Daraus zeigt die App mit der Zeit, welche Muster gute von schwachen Tagen
-unterscheiden. Die Ergebnisse sind Hypothesen („Unterschiede, keine Ursachen“).
+Personal time tracking with a daily review. During the day you log activities, breaks and water
+intake (one tap each); in the evening you rate the day with two scores: productivity and
+satisfaction. Over time the app shows which patterns separate good days from weak ones. Results
+are hypotheses ("differences, not causes").
 
-Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md). Stand: Phase 0 bis 2,
-Plan vs. Ist sowie API und MCP umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI,
-Plankalender, JSON-API, MCP-Server), Phase 3 (Korrelationen, Selbstexperimente, Plan-Faktor,
-Wochenbericht per MCP). Der alte Prototyp liegt unverändert im Branch
-`archiv-2021`.
+The UI, code identifiers, docs and commit messages are in German. This README is in English.
+
+Goal, architecture and phases: [docs/zielbild.md](docs/zielbild.md) (German). Status: phases 0 to
+3 are implemented (tracking, week view, patterns, demo data, Docker/CI, plan calendar, plan vs.
+actual, JSON API, MCP server, correlations, self-experiments, plan factor, weekly report via
+MCP). The old prototype is preserved unchanged in the `archiv-2021` branch.
 
 ## Screenshots
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/jetzt.png" width="240" alt="Jetzt: laufender Timer, Trinken, Kategorien"></td>
-    <td><img src="docs/screenshots/heute.png" width="240" alt="Heute: Kennzahlen und Zeitleiste"></td>
-    <td><img src="docs/screenshots/abschluss.png" width="240" alt="Tagesabschluss mit 1–10-Auswahl"></td>
+    <td><img src="docs/screenshots/jetzt.png" width="240" alt="Now: running timer, water, categories"></td>
+    <td><img src="docs/screenshots/heute.png" width="240" alt="Today: key figures and timeline"></td>
+    <td><img src="docs/screenshots/abschluss.png" width="240" alt="Day review with 1–10 scales"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/woche.png" width="240" alt="Woche mit Diagramm Zeit je Art pro Tag"></td>
-    <td><img src="docs/screenshots/muster.png" width="240" alt="Muster mit Verlaufsdiagramm"></td>
-    <td><img src="docs/screenshots/jetzt-dunkel.png" width="240" alt="Jetzt im Dunkelmodus"></td>
+    <td><img src="docs/screenshots/woche.png" width="240" alt="Week with chart of time per kind per day"></td>
+    <td><img src="docs/screenshots/muster.png" width="240" alt="Patterns with trend chart"></td>
+    <td><img src="docs/screenshots/jetzt-dunkel.png" width="240" alt="Now in dark mode"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/experimente.png" width="240" alt="Experimente: laufendes Experiment und beendetes mit Ergebnis"></td>
+    <td><img src="docs/screenshots/experimente.png" width="240" alt="Experiments: a running one and a finished one with result"></td>
   </tr>
 </table>
 
-Desktop (ab 900 px Seitenleiste):
+Desktop (sidebar from 900 px):
 
-<img src="docs/screenshots/plan.png" width="720" alt="Plan mit Plan-Faktor und dem Hinweis „Realistisch“ im Planblock-Dialog">
-<img src="docs/screenshots/muster-desktop.png" width="720" alt="Muster auf dem Desktop">
+<img src="docs/screenshots/plan.png" width="720" alt="Plan with plan factor and the hint “Realistisch” in the plan block dialog">
+<img src="docs/screenshots/muster-desktop.png" width="720" alt="Patterns on desktop">
 
-## Funktionen
+## Features
 
-- **Jetzt** (`/`): laufender Eintrag, ein Tipp auf eine Kategorie beendet den alten Block und
-  startet den neuen. „Stopp“, „+250 ml Wasser“, „+1 Kaffee“ je ein Tipp.
-- **Heute** (`/tag/`, `/tag/JJJJ-MM-TT/`): Zeitleiste (Tag = 04:00 bis 04:00 Uhr, schraffiert =
-  nicht erfasst), Einträge bearbeiten, löschen, nachtragen, Messungen. Überschneidungen werden
-  abgelehnt.
-- **Abschluss** (`/tag/JJJJ-MM-TT/abschluss/`): „Wie produktiv war der Tag?“ und „Wie zufrieden
-  bist du mit dem Tag?“ (je 1–10), „Fortschritt gemacht?“ (Ja/Nein), Abschalten (1–5, optional),
-  Schlaf, Notiz. Erst danach erscheint die Zusammenfassung.
-- **Woche** (`/woche/`, `/woche/JJJJ-MM-TT/`): Montag bis Sonntag, je Tag Zeitleiste, Deep-Work-
-  Zeit und beide Scores.
-- **Muster** (`/muster/?ziel=produktivitaet|zufriedenheit`): ab 14 bewerteten Tagen (letzte
-  180 Tage) Vergleich des oberen und unteren Drittels nach der gewählten Zielgröße, je Merkmal
-  Ø gute gegen Ø schwache Tage mit Cliff's Delta und Intervall, stärkster Unterschied oben.
-  Ab 30 Tagen Korrelationen (Spearman, wochentagsbereinigt, Block-Bootstrap, Mehrfachtest nach
-  Benjamini-Hochberg), ab 90 Tagen ein Mehrfachmodell (Ridge, Top 5, explorativ). Davor steht
-  je Abschnitt, wie viele Tage noch fehlen. Alles sind Hypothesen, keine Ursachen; Grundlage:
+URLs and UI labels are German (`JJJJ-MM-TT` = `YYYY-MM-DD`).
+
+- **Jetzt** (`/`): the running entry. One tap on a category ends the old block and starts the new
+  one. "Stopp", "+250 ml Wasser", "+1 Kaffee" are one tap each.
+- **Heute** (`/tag/`, `/tag/JJJJ-MM-TT/`): timeline (day = 04:00 to 04:00, hatched = not
+  tracked), edit, delete and backfill entries, measurements. Overlaps are rejected.
+- **Abschluss** (`/tag/JJJJ-MM-TT/abschluss/`): "How productive was the day?" and "How satisfied
+  are you with the day?" (1–10 each), "Made progress?" (yes/no), winding down (1–5, optional),
+  sleep, note. The summary only appears afterwards.
+- **Woche** (`/woche/`, `/woche/JJJJ-MM-TT/`): Monday to Sunday, per day a timeline, deep-work
+  time and both scores.
+- **Muster** (`/muster/?ziel=produktivitaet|zufriedenheit`): from 14 rated days (last 180 days)
+  compares the top and bottom third by the chosen target; per feature the mean of good vs. weak
+  days with Cliff's delta and interval, strongest difference first. From 30 days: correlations
+  (Spearman, weekday-adjusted, block bootstrap, Benjamini-Hochberg multiple-testing correction);
+  from 90 days a multi-feature model (ridge, top 5, exploratory). Before that, each section shows
+  how many days are still missing. Everything is a hypothesis, not a cause; basis:
   `docs/forschung.md`.
-- **Experimente** (`/experimente/`): Selbstexperimente mit zufällig vorab zugewiesener Bedingung je
-  Tag (tageweise, Blöcke, ABAB), acht Vorlagen mit Quelle, eigene Wenn-dann-Regeln. Hypothese,
-  Zielgröße und Dauer sind nach dem Start fest, Abbruch nur mit Vermerk, höchstens ein Experiment
-  läuft. Auf „Jetzt“ steht die heutige Bedingung, im Tagesabschluss die Frage nach der Einhaltung.
-  Das Ergebnis (Randomisierungstest der Mediandifferenz, Cliff's Delta, Einhaltung) erscheint erst
-  nach dem Ende und ist vorsichtig formuliert. Erreichbar über „Muster“ und die Seitenleiste.
-- **Plan-Faktor** (auf „Plan“): Median Ist/Plan je Art der letzten 28 Tage („Deep Work: du schaffst
-  im Median 70 % des Plans“), im Planblock-Dialog als „Realistisch: …“.
-- **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6, mobil
-  Tagesansicht). Planblöcke per Ziehen anlegen, per Drag & Drop verschieben, Klick = bearbeiten
-  oder löschen; erfasste Einträge erscheinen gestreift daneben. Planblöcke überschneiden sich
-  nicht. In „Heute“ zeigt eine Tabelle je Kategorie-Art geplant gegen erfasst, sobald es
-  Planblöcke gibt. Der Kalender braucht JavaScript.
-- **Kategorien** haben eine Art: Deep Work, Shallow Work, Organisation, Pause, Freizeit.
-  Pflege im Admin; `standardkategorien` legt Deep Work, Mails, Meetings, Organisation, Pause,
-  Sport und Freizeit an.
-- **Einstellungen** (`/einstellungen/`, Link im Kopf): API-Tokens erzeugen, auflisten, widerrufen,
-  CSV-Export (`/export.csv`: eine Zeile je bewertetem Tag mit allen Merkmalen, Uhrzeiten als
-  Minuten seit Mitternacht; `/export-eintraege.csv`: alle Einträge; Semikolon, UTF-8 mit BOM,
-  Dezimalkomma).
-- **API und MCP** (`/api/v1/`, `mcp_server/`): KI-Assistenten bedienen die Zeiterfassung, siehe
-  „KI-Assistenten (MCP)“.
-- Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) liegen mit fester Version unter `tracking/static/tracking/vendor/` (offline, mit Lizenzdateien).
+- **Experimente** (`/experimente/`): self-experiments with a randomly pre-assigned condition per
+  day (day-wise, blocks, ABAB), eight templates with sources, custom if-then rules. Hypothesis,
+  target and duration are fixed after the start, aborting requires a note, at most one experiment
+  runs at a time. "Jetzt" shows today's condition, the day review asks about adherence. The result
+  (randomization test of the median difference, Cliff's delta, adherence) appears only after the
+  end and is worded cautiously. Reachable via "Muster" and the sidebar.
+- **Plan factor** (on "Plan"): median actual/planned per kind over the last 28 days ("Deep Work:
+  you achieve a median of 70 % of the plan"), shown as "Realistisch: …" in the plan block dialog.
+- **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): week calendar (FullCalendar 6, day view on mobile).
+  Create plan blocks by dragging, move them by drag & drop, click to edit or delete; tracked
+  entries appear striped next to them. Plan blocks do not overlap. "Heute" shows a table per
+  category kind of planned vs. tracked once plan blocks exist. The calendar needs JavaScript.
+- **Categories** have a kind: Deep Work, Shallow Work, Organisation, Pause, Freizeit. Managed in
+  the admin; `standardkategorien` creates Deep Work, Mails, Meetings, Organisation, Pause, Sport
+  and Freizeit.
+- **Einstellungen** (`/einstellungen/`, link in the header): create, list and revoke API tokens,
+  CSV export (`/export.csv`: one row per rated day with all features, times as minutes since
+  midnight; `/export-eintraege.csv`: all entries; semicolon, UTF-8 with BOM, decimal comma).
+- **API and MCP** (`/api/v1/`, `mcp_server/`): AI assistants can operate the tracker, see "AI
+  assistants (MCP)".
+- Installable as a web app on phones (manifest). HTMX, FullCalendar and Chart.js (charts in Woche
+  and Muster) are vendored at fixed versions in `tracking/static/tracking/vendor/` (offline, with
+  license files).
 
 ## Installation
 
-Drei Wege, alle aus demselben Code. Fertige Pakete entstehen bei jedem
-[Release](https://github.com/alexknowsit/time_tracker/releases) (siehe „Release erstellen“).
+Three ways, all from the same code. Ready-made packages are built with every
+[release](https://github.com/alexknowsit/time_tracker/releases) (see "Creating a release").
 
-### Windows (Installer)
+### Windows (installer)
 
-1. `Zeiterfassung-Setup-X.Y.Z.exe` vom neuesten Release herunterladen und ausführen (kein
-   Administrator nötig, Installation für den eigenen Nutzer).
-2. „Zeiterfassung“ im Startmenü starten. Die App öffnet ein eigenes Fenster (Edge WebView2, auf
-   Windows 10/11 vorhanden) und meldet den lokalen Nutzer automatisch an; ein Passwort gibt es
-   nicht. Fenster schließen beendet sie.
+1. Download `Zeiterfassung-Setup-X.Y.Z.exe` from the latest release and run it (no administrator
+   needed, installs for the current user).
+2. Start "Zeiterfassung" from the Start menu. The app opens its own window (Edge WebView2, present
+   on Windows 10/11) and signs in the local user automatically; there is no password. Closing the
+   window quits the app.
 
-Die Daten liegen unter `%LOCALAPPDATA%\Zeiterfassung` (`db.sqlite3`, `secret_key`). Eine
-Deinstallation lässt sie bewusst stehen; für ein Backup den Ordner kopieren. Der Server lauscht nur
-auf `127.0.0.1` an einem zufälligen Port; der Anmelde-Link mit einmaligem Geheimnis kennt nur das
-Fenster, andere Programme auf dem Rechner kommen ohne ihn nicht hinein. Das Programm ist nicht
-signiert: Beim ersten Start zeigt Windows SmartScreen eine Warnung („Weitere Informationen“, dann
-„Trotzdem ausführen“). HTMX, FullCalendar und Chart.js sind im Programm enthalten, die App läuft komplett offline.
+Data lives in `%LOCALAPPDATA%\Zeiterfassung` (`db.sqlite3`, `secret_key`). Uninstalling
+deliberately leaves it in place; for a backup, copy the folder. The server listens only on
+`127.0.0.1` on a random port; the sign-in link with its one-time secret is known only to the
+window, so other programs on the machine cannot get in without it. The program is not signed: on
+first start Windows SmartScreen shows a warning ("More info", then "Run anyway"). HTMX,
+FullCalendar and Chart.js are bundled, so the app runs completely offline.
 
-### Home Assistant (Add-on)
+### Home Assistant (add-on)
 
-1. Einstellungen, Add-ons, Add-on-Store, Menü oben rechts, **Repositories**:
-   `https://github.com/alexknowsit/time_tracker` hinzufügen.
-2. **Zeiterfassung** installieren, starten, in der Seitenleiste öffnen (Ingress, kein Port).
+1. Settings, Add-ons, Add-on Store, menu at top right, **Repositories**: add
+   `https://github.com/alexknowsit/time_tracker`.
+2. Install **Zeiterfassung**, start it, open it from the sidebar (ingress, no port).
 
-Angemeldet ist, wer Home Assistant bedienen darf; Optionen (`zeitzone`,
-`csrf_trusted_origins`), Datenablage und Sicherheit stehen in
-[homeassistant/zeiterfassung/DOCS.md](homeassistant/zeiterfassung/DOCS.md). Das Add-on nutzt das
-Image `ghcr.io/alexknowsit/time_tracker:<version>` (amd64 und arm64 in einem Multi-Arch-Manifest,
-darum ohne `{arch}` in `image`). Die Add-on-Version in `config.yaml` setzt der Release-Workflow.
+Whoever may use Home Assistant is signed in. Options (`zeitzone`, `csrf_trusted_origins`), data
+location and security are described in
+[homeassistant/zeiterfassung/DOCS.md](homeassistant/zeiterfassung/DOCS.md). The add-on uses the
+image `ghcr.io/alexknowsit/time_tracker:<version>` (amd64 and arm64 in one multi-arch manifest,
+hence no `{arch}` in `image`). The release workflow sets the add-on version in `config.yaml`.
 
 ### Server (Docker Compose)
 
 ```
 mkdir zeiterfassung && cd zeiterfassung
-# docker-compose.yml vom Release und .env.example (zu .env) herunterladen
+# download docker-compose.yml from the release and .env.example (as .env)
 docker compose up -d
 docker compose exec zeiterfassung python manage.py createsuperuser
-docker compose exec zeiterfassung python manage.py standardkategorien <benutzername>
+docker compose exec zeiterfassung python manage.py standardkategorien <username>
 ```
 
-Die Compose-Datei (`deploy/docker-compose.yml`, als Release-Asset mit festem Tag) nutzt das Image
-`ghcr.io/alexknowsit/time_tracker` statt `build: .`; `ZEITERFASSUNG_VERSION=X.Y.Z` legt die
-Version fest. Konfiguration und HTTPS-Hinweise siehe „Docker“ und „Umgebungsvariablen“.
+The compose file (`deploy/docker-compose.yml`, a release asset with a fixed tag) uses the image
+`ghcr.io/alexknowsit/time_tracker` instead of `build: .`; `ZEITERFASSUNG_VERSION=X.Y.Z` pins the
+version. For configuration and HTTPS notes see "Docker" and "Environment variables".
 
-## Setup lokal
+## Local setup
 
-Voraussetzung: [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/).
 
 ```
 uv sync
 export DJANGO_DEBUG=1
 uv run python manage.py migrate
 uv run python manage.py createsuperuser
-uv run python manage.py standardkategorien <benutzername>
+uv run python manage.py standardkategorien <username>
 uv run python manage.py runserver   # App: http://127.0.0.1:8000/, Admin: /admin/
 ```
 
-Prüfen vor jedem Commit:
+Check before every commit:
 
 ```
-uv sync --group mcp   # einmalig, damit die MCP-Tests laufen (sonst übersprungen)
+uv sync --group mcp   # once, so the MCP tests run (otherwise skipped)
 uv run pytest
 uv run ruff check && uv run ruff format
 DJANGO_DEBUG=1 uv run python manage.py makemigrations --check --dry-run
 ```
 
-## KI-Assistenten (MCP)
+## AI assistants (MCP)
 
-Der MCP-Server lässt Claude Code oder Claude Desktop die Zeiterfassung bedienen („starte Deep
-Work“, „trage gestern 9 bis 10 Uhr Mails nach“, „wie war meine Woche?“). Er ruft die JSON-API
-(`/api/v1/`) auf; die Tools heißen `aktueller_stand`, `timer_starten`, `timer_stoppen`,
-`trinken_erfassen`, `eintrag_nachtragen`, `tag_abrufen`, `tag_bewerten`, `woche_abrufen`,
-`muster_abrufen`, `plan_abrufen`, `planblock_anlegen`, `planblock_loeschen`, `experiment_status`,
-`experiment_starten`, `experiment_tag_bestaetigen`, `wochenbericht_daten` sowie der Prompt
-`wochenbericht` (kurzer, vorsichtiger Rückblick mit Experiment-Vorschlägen, ohne Server-LLM).
+The MCP server lets Claude Code or Claude Desktop operate the tracker ("start deep work", "log
+yesterday 9 to 10 emails", "how was my week?"). It calls the JSON API (`/api/v1/`); the tools are
+`aktueller_stand`, `timer_starten`, `timer_stoppen`, `trinken_erfassen`, `eintrag_nachtragen`,
+`tag_abrufen`, `tag_bewerten`, `woche_abrufen`, `muster_abrufen`, `plan_abrufen`,
+`planblock_anlegen`, `planblock_loeschen`, `experiment_status`, `experiment_starten`,
+`experiment_tag_bestaetigen`, `wochenbericht_daten`, plus the prompt `wochenbericht` (a short,
+cautious review with experiment suggestions, no server-side LLM).
 
-1. In der App unter **Einstellungen** ein Token erzeugen und sofort kopieren (wird nur einmal
-   angezeigt, gespeichert wird nur der Hash).
-2. Claude Code (im Projektordner; ZEITERFASSUNG_URL ohne Schrägstrich am Ende):
+1. In the app, create a token under **Einstellungen** and copy it immediately (shown only once,
+   only the hash is stored).
+2. Claude Code (in the project folder; `ZEITERFASSUNG_URL` without a trailing slash):
 
 ```
 claude mcp add zeiterfassung \
   --env ZEITERFASSUNG_URL=https://zeit.example.org \
   --env ZEITERFASSUNG_TOKEN=zt_... \
-  -- uv run --project /pfad/zu/time_tracker --group mcp python /pfad/zu/time_tracker/mcp_server/server.py
+  -- uv run --project /path/to/time_tracker --group mcp python /path/to/time_tracker/mcp_server/server.py
 ```
 
    Claude Desktop (`claude_desktop_config.json`):
@@ -173,8 +175,8 @@ claude mcp add zeiterfassung \
   "mcpServers": {
     "zeiterfassung": {
       "command": "uv",
-      "args": ["run", "--project", "/pfad/zu/time_tracker", "--group", "mcp",
-               "python", "/pfad/zu/time_tracker/mcp_server/server.py"],
+      "args": ["run", "--project", "/path/to/time_tracker", "--group", "mcp",
+               "python", "/path/to/time_tracker/mcp_server/server.py"],
       "env": {
         "ZEITERFASSUNG_URL": "https://zeit.example.org",
         "ZEITERFASSUNG_TOKEN": "zt_..."
@@ -184,94 +186,90 @@ claude mcp add zeiterfassung \
 }
 ```
 
-Lokal zum Ausprobieren: `ZEITERFASSUNG_URL=http://127.0.0.1:8000`. Mit `--http [--port 8765]`
-läuft der Server stattdessen als streamable-http auf `127.0.0.1` (ohne eigene Authentifizierung,
-deshalb nur lokal binden). Ohne die beiden Variablen bricht er beim Start mit einer klaren
-Meldung ab.
+To try it locally: `ZEITERFASSUNG_URL=http://127.0.0.1:8000`. With `--http [--port 8765]` the
+server runs as streamable-http on `127.0.0.1` instead (no authentication of its own, so bind
+locally only). Without the two variables it aborts at startup with a clear message.
 
-**Das Token wie ein Passwort behandeln:** Wer es hat, kann alle Daten lesen und ändern. Nicht
-einchecken, nicht in Chats einfügen; bei Verdacht unter Einstellungen widerrufen. Der Assistent
-sieht die Daten, die die Tools zurückgeben. Die API selbst: Header `Authorization: Bearer <token>`,
-JSON rein und raus, Fehler als `{"fehler": …, "felder": {…}}`; Session-Logins gelten dort nicht.
+**Treat the token like a password:** whoever has it can read and change all data. Do not commit
+it, do not paste it into chats; revoke it under Einstellungen if in doubt. The assistant sees the
+data the tools return. The API itself: header `Authorization: Bearer <token>`, JSON in and out,
+errors as `{"fehler": …, "felder": {…}}`; session logins do not count there.
 
-## Testdaten
+## Demo data
 
 ```
 uv run python manage.py demodaten demo [--tage 120] [--seed 1]
 ```
 
-Legt den Nutzer an, falls er fehlt (Passwort `demo`, wird ausgegeben), dazu die Standardkategorien
-und für jeden Werktag (Wochenenden manchmal) bis gestern Einträge, Wasser- und Kaffee-Messungen
-und die Bewertungen. Eingebautes Muster: frühe erste Pause, lange Deep-Work-Blöcke und mehr
-Wasser erhöhen die Produktivität, unterbrochene Blöcke senken sie; mehr Pausen, weniger Wechsel
-und Fortschritt (hängt mit langen Deep-Work-Blöcken zusammen) erhöhen die Zufriedenheit; später
-Kaffee kostet Schlaf der folgenden Nacht (plus Rauschen). Dazu Bett-/Aufstehzeiten, einige
-nachgetragene Einträge, Planblöcke der letzten 28 Tage (Deep Work etwa 70 % geschafft), ein
-beendetes Experiment „Mikropausen“ (eingebauter Effekt auf die Zufriedenheit) und ein laufendes
-„Koffein-Schluss“. Mit gleichem `--seed`
-immer gleiche Daten. Der Befehl bricht ab, wenn der Nutzer schon Einträge, Messungen oder
-Bewertungen hat; echte und Testdaten werden nie gemischt. Am besten mit einer eigenen Datenbank
-(`DJANGO_DB_PATH=/tmp/demo.sqlite3`).
+Creates the user if missing (password `demo`, printed), plus the default categories and, for every
+weekday (weekends sometimes) up to yesterday, entries, water and coffee measurements and ratings.
+Built-in pattern: an early first break, long deep-work blocks and more water raise productivity,
+interrupted blocks lower it; more breaks, fewer switches and progress (correlated with long
+deep-work blocks) raise satisfaction; late coffee costs sleep the following night (plus noise).
+Also bed/wake times, some backfilled entries, plan blocks for the last 28 days (about 70 % of deep
+work achieved), a finished experiment "Mikropausen" (built-in effect on satisfaction) and a running
+one, "Koffein-Schluss". The same `--seed` always yields the same data. The command aborts if the
+user already has entries, measurements or ratings; real and demo data are never mixed. Best used
+with a separate database (`DJANGO_DB_PATH=/tmp/demo.sqlite3`).
 
 ## Docker
 
 ```
-cp .env.example .env     # DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS setzen
+cp .env.example .env     # set DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS
 docker compose up -d --build
 docker compose exec zeiterfassung python manage.py createsuperuser
-docker compose exec zeiterfassung python manage.py standardkategorien <benutzername>
+docker compose exec zeiterfassung python manage.py standardkategorien <username>
 ```
 
-Der Container führt beim Start `migrate` aus und startet dann gunicorn auf Port 8000. Statische
-Dateien liefert WhiteNoise aus, ein zusätzlicher Webserver dafür ist nicht nötig. Die
-SQLite-Datei liegt im Volume `daten` unter `/data/db.sqlite3`; Backup = Datei kopieren.
+On start the container runs `migrate` and then gunicorn on port 8000. WhiteNoise serves static
+files, so no extra web server is needed. The SQLite file lives in the volume `daten` at
+`/data/db.sqlite3`; backup = copy the file.
 
-Im Betrieb (`DJANGO_DEBUG` aus) sind Session- und CSRF-Cookie `Secure`, und `X-Forwarded-Proto`
-wird vertraut. Die App gehört daher hinter einen HTTPS-Reverse-Proxy (z. B. Cloudflare), der
-diesen Header selbst setzt und auf HTTPS umleitet. `manage.py check --deploy` meldet dann nur
-noch `W004` (HSTS) und `W008` (SSL-Redirect), beides Aufgabe des Proxys.
+In production (`DJANGO_DEBUG` off) the session and CSRF cookies are `Secure` and
+`X-Forwarded-Proto` is trusted. The app therefore belongs behind an HTTPS reverse proxy (e.g.
+Cloudflare) that sets this header itself and redirects to HTTPS. `manage.py check --deploy` then
+only reports `W004` (HSTS) and `W008` (SSL redirect), both the proxy's job.
 
-## Umgebungsvariablen
+## Environment variables
 
-| Variable | Bedeutung |
+| Variable | Meaning |
 |---|---|
-| `DJANGO_SECRET_KEY` | Pflicht, außer bei `DJANGO_DEBUG=1` (dann Dev-Default) |
-| `DJANGO_DEBUG` | `1`/`true`/`yes` schaltet Debug ein, Standard: aus |
-| `DJANGO_ALLOWED_HOSTS` | Kommagetrennte Hostnamen |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Kommagetrennte Ursprünge mit Schema (`https://…`), nur bei Debug aus |
-| `DJANGO_DB_PATH` | Pfad der SQLite-Datei, Standard `db.sqlite3` im Projektordner (Docker: `/data/db.sqlite3`) |
-| `ZEITERFASSUNG_MODUS` | `server` (Standard), `homeassistant` oder `desktop`. Ohne Angabe gilt `homeassistant`, wenn `/data/options.json` existiert. In den beiden anderen Modi entsteht der Schlüssel als Datei `secret_key` neben der Datenbank |
+| `DJANGO_SECRET_KEY` | Required, except with `DJANGO_DEBUG=1` (then a dev default) |
+| `DJANGO_DEBUG` | `1`/`true`/`yes` enables debug, default: off |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated host names |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated origins with scheme (`https://…`), only with debug off |
+| `DJANGO_DB_PATH` | Path of the SQLite file, default `db.sqlite3` in the project folder (Docker: `/data/db.sqlite3`) |
+| `ZEITERFASSUNG_MODUS` | `server` (default), `homeassistant` or `desktop`. If unset, `homeassistant` applies when `/data/options.json` exists. In the other two modes the secret key is created as a file `secret_key` next to the database |
 
-Die CI (`.github/workflows/ci.yml`) führt bei Push und Pull Request auf `main` ruff, pytest und
-die Migrationsprüfung aus.
+On push and pull request to `main`, CI (`.github/workflows/ci.yml`) runs ruff, pytest and the
+migration check.
 
-## Release erstellen
+## Creating a release
 
-1. Auf `main` prüfen: pytest, ruff und Migrationsprüfung grün (CI).
-2. Auf GitHub ein Release mit Tag `vX.Y.Z` veröffentlichen (Vorabversionen wie `v1.0.0-rc1`
-   gehen auch, bekommen aber weder `:latest` noch einen Add-on-Versionssprung).
-3. Der Workflow `.github/workflows/release.yml` läuft und erzeugt:
-   - Docker-Image `ghcr.io/alexknowsit/time_tracker:X.Y.Z` und `:latest` (linux/amd64 und
-     linux/arm64) und `docker-compose.yml` als Release-Asset,
-   - `Zeiterfassung-Setup-X.Y.Z.exe` als Release-Asset (PyInstaller, Inno Setup, Rauchtest der
-     gebauten App),
-   - einen Commit auf `main` (`[skip ci]`), der `version` in
-     `homeassistant/zeiterfassung/config.yaml` setzt und die Release-Notizen in dessen
-     `CHANGELOG.md` einträgt; danach bietet Home Assistant das Update an.
-4. Die Pakete einmal ausprobieren. Der erste Release braucht, dass das GHCR-Paket auf „public“
-   steht (GitHub, Packages, Paketeinstellungen), sonst kann Home Assistant das Image nicht laden.
+1. On `main`, check that pytest, ruff and the migration check are green (CI).
+2. Publish a release on GitHub with tag `vX.Y.Z` (pre-releases like `v1.0.0-rc1` work too, but get
+   neither `:latest` nor an add-on version bump).
+3. The workflow `.github/workflows/release.yml` runs and produces:
+   - Docker image `ghcr.io/alexknowsit/time_tracker:X.Y.Z` and `:latest` (linux/amd64 and
+     linux/arm64) and `docker-compose.yml` as a release asset,
+   - `Zeiterfassung-Setup-X.Y.Z.exe` as a release asset (PyInstaller, Inno Setup, smoke test of
+     the built app),
+   - a commit on `main` (`[skip ci]`) that sets `version` in
+     `homeassistant/zeiterfassung/config.yaml` and adds the release notes to its `CHANGELOG.md`;
+     Home Assistant then offers the update.
+4. Try the packages once. The first release requires the GHCR package to be "public" (GitHub,
+   Packages, package settings), otherwise Home Assistant cannot pull the image.
 
-Zum Testen ohne Veröffentlichen: Actions, „Release“, „Run workflow“ (Version z. B. `0.0.0-test`).
-Es wird nur gebaut, die Ergebnisse liegen als Workflow-Artifacts an der Ausführung. Der Push auf
-`main` im letzten Schritt braucht Schreibrechte; ein Branchschutz muss dem Actions-Bot den Push
-erlauben.
+To test without publishing: Actions, "Release", "Run workflow" (version e.g. `0.0.0-test`). It
+only builds; results are workflow artifacts of the run. The push to `main` in the last step needs
+write permission; branch protection must allow the Actions bot to push.
 
-Windows-App lokal ausprobieren (ohne Fenster, gibt den Anmelde-Link aus):
+Try the Windows app locally (no window, prints the sign-in link):
 
 ```
 uv run --group desktop python desktop/start.py --nur-server
 ```
 
-Bauen: `DJANGO_SECRET_KEY=x uv run python manage.py collectstatic --noinput`, dann
-`uv run --group desktop pyinstaller desktop/zeiterfassung.spec --noconfirm` und unter Windows
+Build: `DJANGO_SECRET_KEY=x uv run python manage.py collectstatic --noinput`, then
+`uv run --group desktop pyinstaller desktop/zeiterfassung.spec --noconfirm` and on Windows
 `iscc /DAppVersion=X.Y.Z desktop\zeiterfassung.iss`.
