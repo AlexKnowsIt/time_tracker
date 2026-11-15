@@ -10,7 +10,7 @@
   <link rel="manifest" href="{% url 'manifest' %}">
   <link rel="icon" href="{% static 'tracking/icon.svg' %}" type="image/svg+xml">
   <link rel="stylesheet" href="{% static 'tracking/app.css' %}">
-  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+  <script src="{% static 'tracking/vendor/htmx.org-2.0.4/htmx.min.js' %}" defer></script>
   <script src="{% static 'tracking/app.js' %}" defer></script>
 </head>
 <body{% if user.is_authenticated %} class="mit-navigation"{% endif %}>

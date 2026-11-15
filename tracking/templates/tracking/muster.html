@@ -122,9 +122,7 @@
 {% endif %}
 
 {% if verlauf %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"
-        integrity="sha384-zYPBGXwO4633CABX/5Spf6emCKUJCfoOkhOMYyxMsatqQZPnDblmmOewfjsIVWCM"
-        crossorigin="anonymous" defer></script>
+<script src="{% static 'tracking/vendor/chart.js-4.4.7/chart.umd.js' %}" defer></script>
 <script src="{% static 'tracking/charts.js' %}" defer></script>
 {% endif %}
 {% endblock %}

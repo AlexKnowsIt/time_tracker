@@ -61,7 +61,7 @@ Desktop (ab 900 px Seitenleiste):
   nach dem Ende und ist vorsichtig formuliert. Erreichbar über „Muster“ und die Seitenleiste.
 - **Plan-Faktor** (auf „Plan“): Median Ist/Plan je Art der letzten 28 Tage („Deep Work: du schaffst
   im Median 70 % des Plans“), im Planblock-Dialog als „Realistisch: …“.
-- **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6 per CDN, mobil
+- **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6, mobil
   Tagesansicht). Planblöcke per Ziehen anlegen, per Drag & Drop verschieben, Klick = bearbeiten
   oder löschen; erfasste Einträge erscheinen gestreift daneben. Planblöcke überschneiden sich
   nicht. In „Heute“ zeigt eine Tabelle je Kategorie-Art geplant gegen erfasst, sobald es
@@ -75,7 +75,7 @@ Desktop (ab 900 px Seitenleiste):
   Dezimalkomma).
 - **API und MCP** (`/api/v1/`, `mcp_server/`): KI-Assistenten bedienen die Zeiterfassung, siehe
   „KI-Assistenten (MCP)“.
-- Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) kommen per CDN mit fester Version.
+- Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) liegen mit fester Version unter `tracking/static/tracking/vendor/` (offline, mit Lizenzdateien).
 
 ## Installation
 
@@ -95,8 +95,7 @@ Deinstallation lässt sie bewusst stehen; für ein Backup den Ordner kopieren. D
 auf `127.0.0.1` an einem zufälligen Port; der Anmelde-Link mit einmaligem Geheimnis kennt nur das
 Fenster, andere Programme auf dem Rechner kommen ohne ihn nicht hinein. Das Programm ist nicht
 signiert: Beim ersten Start zeigt Windows SmartScreen eine Warnung („Weitere Informationen“, dann
-„Trotzdem ausführen“). HTMX, FullCalendar und Chart.js kommen per CDN, die App braucht dafür
-Internet (ohne sind Plan und Diagramme leer).
+„Trotzdem ausführen“). HTMX, FullCalendar und Chart.js sind im Programm enthalten, die App läuft komplett offline.
 
 ### Home Assistant (Add-on)
 

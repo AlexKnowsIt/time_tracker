@@ -52,7 +52,7 @@ zu erfassen. Deshalb gilt für jede Entscheidung:
   einigen hundert Tagen braucht es weder pandas noch scipy. Erst bei
   Regressionen in Phase 5 kommt eine Bibliothek dazu.
 - **Diagramme:** Die Zeitleiste ist reines HTML/CSS. Für Verläufe reicht
-  Chart.js, eingebunden per CDN.
+  Chart.js, eingecheckt unter static/tracking/vendor (offline).
 - **PWA-Manifest**, damit die App auf dem Handy wie eine App startet.
 - **Werkzeuge:** `uv` für Abhängigkeiten, `ruff` für Formatierung und Linting,
   `pytest` mit `pytest-django` für Tests.
@@ -317,7 +317,7 @@ davon abweicht.
 
 - Modell `Planblock(nutzer, kategorie, start, ende, titel)`, überschneidungsfrei pro Nutzer
   (gleiche Regel wie bei Einträgen, gemeinsame Hilfsfunktion in `forms.py`).
-- Seite „Plan“ (`/plan/`): Wochenkalender mit FullCalendar 6 (feste Version per CDN), Planblöcke
+- Seite „Plan“ (`/plan/`): Wochenkalender mit FullCalendar 6 (feste Version, eingecheckt unter static/tracking/vendor), Planblöcke
   per Ziehen anlegen, verschieben, Größe ändern, löschen; Ist-Einträge gestreift daneben.
   Änderungen per `fetch` mit CSRF-Token, der Server validiert mit einem Django-Form.
 - Tagesansicht: je Kategorie-Art geplant gegen erfasst (`plan.py`, reine Funktion, schneidet an

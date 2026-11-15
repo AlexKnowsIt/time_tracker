@@ -249,3 +249,15 @@ def test_muster_enthaelt_verlaufsdaten(client, nutzer, kat):
     # Unter zwei bewerteten Tagen kein Diagramm
     Tagesbewertung.objects.all().delete()
     assert "verlauf-daten" not in client.get(reverse("muster")).content.decode()
+
+
+def test_keine_externen_script_urls(client, nutzer):
+    """Offline-fähig: Bibliotheken kommen aus static/tracking/vendor, nicht per CDN."""
+    for name in ("jetzt", "plan"):
+        html = client.get(reverse(name)).content.decode()
+        assert "https://" not in "".join(re.findall(r"<script[^>]*>", html)), name
+        assert "/tracking/vendor/htmx.org-2.0.4/htmx.min.js" in html
+    assert (
+        "/tracking/vendor/fullcalendar-6.1.15/index.global.min.js"
+        in client.get(reverse("plan")).content.decode()
+    )
