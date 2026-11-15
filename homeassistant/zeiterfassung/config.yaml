@@ -1,6 +1,6 @@
 name: Zeiterfassung
 slug: zeiterfassung
-version: "0.1.0"
+version: "0.1.1"
 description: Persönliche Zeiterfassung mit Tagesauswertung (Scores, Muster, Plan vs. Ist)
 url: https://github.com/alexknowsit/time_tracker
 arch:
