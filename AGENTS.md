@@ -14,9 +14,14 @@ begründet es und passt das Zielbild an.
 
 ## Stack und Befehle
 
-- Python 3.13, Django 5.2 LTS, HTMX 2, FullCalendar 6 und Chart.js 4 per CDN
-  (feste Version mit `integrity`), SQLite (WAL). Kein JS-Framework, kein
+- Python 3.13, Django 5.2 LTS, HTMX 2, FullCalendar 6 und Chart.js 4,
+  eingecheckt unter `tracking/static/tracking/vendor/` (kein CDN, die
+  Windows-App läuft offline), SQLite (WAL). Kein JS-Framework, kein
   Build-Schritt, kein CSS-Framework.
+- Drei Betriebsmodi im selben Code: Server (Docker), Home-Assistant-Add-on
+  (`homeassistant/`, Ingress-Middleware in `zeiterfassung/ingress.py`) und
+  Windows-App (`desktop/`, PyInstaller + Inno Setup). Ein GitHub-Release baut
+  alle drei (`.github/workflows/release.yml`).
 - Betrieb: gunicorn + WhiteNoise im Docker-Container, Datenbank im Volume
   `/data`. CI in `.github/workflows/ci.yml`.
 - API unter `/api/v1/` (nur Bearer-Token, nie Session) und MCP-Server in
@@ -35,9 +40,8 @@ uv run python manage.py demodaten demo   # Testdaten, nur für leere Nutzer
 uv sync --group mcp                      # für MCP-Server und dessen Tests
 ```
 
-Externe Bibliotheken sind in der Sandbox per CDN oft gesperrt. Für
-Playwright-Checks per `npm pack` holen und mit `page.route` unter der CDN-URL
-ausliefern.
+Desktop-Modus lokal ohne Fenster testen:
+`uv run --group desktop python desktop/start.py --nur-server`.
 
 ## Struktur
 
@@ -79,6 +83,13 @@ Diese Punkte sind in Reviews aufgefallen und gelten für jede Änderung:
 - **Zwei Scores:** Produktivität und Zufriedenheit, beide 1–10, Fragen fest
   formuliert. Kategorie-Arten: Deep Work, Shallow Work, Organisation, Pause,
   Freizeit.
+- **Forschung ist die Grundlage.** Neue Merkmale, Hinweise und
+  Experiment-Vorlagen nur mit Beleg aus `docs/forschung.md` (dort ergänzen).
+  Was dort unter „nicht behaupten“ steht, gilt für alle Texte.
+- **Experimente sind randomisiert und vorab festgelegt.** Zuweisung beim
+  Start erzeugen und nie ändern, Auswertung per Permutationstest unter genau
+  diesem Schema (zweiseitig). Designs, die kein p < 0,05 erreichen können
+  (z. B. ABAB), nur mit Warnung.
 - **Auswertungen als Hypothesen formulieren**, nie als Ursache. Mindestanzahl
   Tage beachten (`auswertung.MIN_TAGE`).
 
@@ -119,9 +130,12 @@ Bewährtes Vorgehen in diesem Projekt:
 
 ## Stand
 
-- Umgesetzt: Phase 0–2, Phase 4 (Plan vs. Ist), Phase 4b (API und MCP),
-  Betrieb (Docker, CI). Details und Reihenfolge in `docs/zielbild.md`.
-- Offen: Deployment auf den eigenen Server (Cloudflare Access braucht für
-  `/api/` eine Ausnahme oder ein Service-Token), Phase 3 (Korrelationen,
-  Selbstexperimente), Löschen von Einträgen/Messungen per API, Test von
-  Drag & Drop auf Touch-Geräten, Kalender-Zeitzone fest auf `TIME_ZONE`.
+- Umgesetzt: alle Phasen aus `docs/zielbild.md` (Erfassen, Muster,
+  Korrelationen, Mehrfachmodell, Selbstexperimente, Plan vs. Ist mit
+  Plan-Faktor, API und MCP inkl. Wochenbericht, CSV-Export) sowie die drei
+  Betriebsmodi und die Release-Pipeline.
+- Offen: erster echter Release-Lauf (Windows-Build, Docker-Build und
+  HA-Ingress sind nur außerhalb von Windows/Docker getestet), GHCR-Paket
+  öffentlich stellen, Löschen von Einträgen/Messungen per API, Drag & Drop
+  auf Touch-Geräten, Kalender-Zeitzone fest auf `TIME_ZONE`, `kleinstes_p`
+  ist bei kurzen tageweisen Designs nur eine Untergrenze.
