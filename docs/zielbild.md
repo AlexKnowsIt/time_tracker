@@ -60,6 +60,12 @@ zu erfassen. Deshalb gilt für jede Entscheidung:
   im Repo. Zeitzone `Europe/Berlin`, `USE_TZ = True`.
 - **Betrieb:** ein Container auf dem eigenen Server hinter Cloudflare Access,
   zusätzlich Django-Login. Nächtliches Backup der SQLite-Datei.
+- **Drei Betriebsarten aus einem Code** (`ZEITERFASSUNG_MODUS`, `zeiterfassung/betriebsmodus.py`):
+  `server` (Docker-Image auf GHCR, amd64 und arm64), `homeassistant` (Add-on mit Ingress:
+  `ingress.py` übernimmt `X-Ingress-Path` als Script-Präfix, nur von 172.30.32.2; Anmeldung über
+  den Supervisor; Daten und Schlüssel in `/data`) und `desktop` (Windows-App: waitress auf
+  127.0.0.1, pywebview-Fenster, einmaliger Anmelde-Link, Daten in `%LOCALAPPDATA%\Zeiterfassung`).
+  Releases baut `.github/workflows/release.yml` (Image, Installer, Add-on-Version).
 
 ### Projektstruktur
 

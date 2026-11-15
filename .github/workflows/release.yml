@@ -1,0 +1,222 @@
+name: Release
+
+# Beim Veröffentlichen eines GitHub-Releases (Tag vX.Y.Z) entstehen:
+#   1. Docker-Image auf GHCR (amd64 + arm64) und deploy/docker-compose.yml als Release-Asset
+#   2. Windows-Installer Zeiterfassung-Setup-X.Y.Z.exe als Release-Asset
+#   3. Versionssprung des Home-Assistant-Add-ons auf main
+# Manuell (workflow_dispatch) wird nur gebaut: nichts veröffentlicht, nichts committet,
+# die Ergebnisse liegen als Workflow-Artifacts an der Ausführung.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versionsnummer für den Testbau (ohne v)"
+        default: "0.0.0-test"
+        required: true
+
+permissions: {}
+
+env:
+  IMAGE: ghcr.io/alexknowsit/time_tracker
+
+jobs:
+  vorbereitung:
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        env:
+          EREIGNIS: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          EINGABE: ${{ inputs.version }}
+        run: |
+          if [ "$EREIGNIS" = release ]; then version="${TAG#v}"; else version="$EINGABE"; fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "Ungültige Version: $version (erwartet X.Y.Z, Tag vX.Y.Z)" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DJANGO_DEBUG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen --group mcp
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pytest
+      - run: uv run python manage.py makemigrations --check --dry-run
+
+  docker:
+    needs: [vorbereitung, tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Compose-Datei an das Release hängen
+      packages: write # Image nach GHCR schieben
+    env:
+      VERSION: ${{ needs.vorbereitung.outputs.version }}
+      RELEASE: ${{ github.event_name == 'release' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: env.RELEASE == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.RELEASE == 'true' }}
+          # :latest nur für fertige Releases, nicht für Vorabversionen
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ github.event.release.prerelease == false && format('{0}:latest', env.IMAGE) || '' }}
+          provenance: false # sonst hängt ein "unknown/unknown"-Eintrag im Manifest, den HA nicht braucht
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Compose-Datei mit festem Image-Tag
+        run: |
+          mkdir out
+          sed "s/:-latest}/:-${VERSION}}/" deploy/docker-compose.yml > out/docker-compose.yml
+          grep -q "${VERSION}" out/docker-compose.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose
+          path: out/docker-compose.yml
+      - name: An das Release anhängen
+        if: env.RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" out/docker-compose.yml --clobber
+
+  windows:
+    needs: [vorbereitung, tests]
+    runs-on: windows-latest
+    permissions:
+      contents: write # Installer an das Release hängen
+    env:
+      VERSION: ${{ needs.vorbereitung.outputs.version }}
+      RELEASE: ${{ github.event_name == 'release' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen --no-dev --group desktop
+      - name: Statische Dateien sammeln
+        shell: bash
+        env:
+          DJANGO_SECRET_KEY: nur-fuer-den-build
+        run: uv run --no-sync python manage.py collectstatic --noinput
+      - name: PyInstaller
+        run: uv run --no-sync pyinstaller desktop/zeiterfassung.spec --noconfirm
+      - name: Rauchtest der gebauten App
+        shell: pwsh
+        run: |
+          $daten = Join-Path $env:RUNNER_TEMP "zeit-daten"
+          $env:ZEITERFASSUNG_DATEN = $daten
+          New-Item -ItemType Directory -Force $daten | Out-Null
+          $p = Start-Process -FilePath "dist\Zeiterfassung\Zeiterfassung.exe" `
+            -ArgumentList "--nur-server", "--url-datei", "$daten\url.txt" -PassThru
+          try {
+            $datei = "$daten\url.txt"
+            for ($i = 0; $i -lt 90 -and -not (Test-Path $datei); $i++) { Start-Sleep -Seconds 1 }
+            if (-not (Test-Path $datei)) { throw "App ist nicht gestartet (keine url.txt)" }
+            $basis = (Get-Content $datei -Raw).Trim() -replace '/desktop-anmeldung/.*$', ''
+            $antwort = Invoke-WebRequest -Uri "$basis/login/" -UseBasicParsing
+            if ($antwort.StatusCode -ne 200) { throw "/login/ lieferte $($antwort.StatusCode)" }
+            Write-Host "Rauchtest ok: $basis/login/ = 200"
+          } finally {
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+            if (Test-Path "$daten\zeiterfassung.log") { Get-Content "$daten\zeiterfassung.log" }
+          }
+      - name: Inno Setup bereitstellen
+        shell: pwsh
+        run: |
+          # Auf den Runner-Images ist Inno Setup vorinstalliert; sonst per Chocolatey nachladen
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe nicht gefunden" }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+      - name: Installer bauen
+        shell: pwsh
+        run: |
+          & $env:ISCC "/DAppVersion=$env:VERSION" desktop\zeiterfassung.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc fehlgeschlagen" }
+          if (-not (Test-Path "out\Zeiterfassung-Setup-$env:VERSION.exe")) { throw "Installer fehlt" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: out/Zeiterfassung-Setup-${{ env.VERSION }}.exe
+      - name: An das Release anhängen
+        if: env.RELEASE == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" "out/Zeiterfassung-Setup-${VERSION}.exe" --clobber
+
+  ha-version:
+    # Erst nach dem Image: HA bietet das Update an, sobald config.yaml die neue Version trägt,
+    # und holt dann ghcr.io/alexknowsit/time_tracker:<version>.
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    needs: [vorbereitung, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Commit auf main
+    env:
+      VERSION: ${{ needs.vorbereitung.outputs.version }}
+      RELEASE_BODY: ${{ github.event.release.body }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Version und Änderungsprotokoll des Add-ons setzen
+        run: |
+          python3 - <<'EOF'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          notizen = os.environ.get("RELEASE_BODY", "").strip() or "Siehe GitHub-Release."
+          add_on = Path("homeassistant/zeiterfassung")
+
+          konfig = add_on / "config.yaml"
+          text, n = re.subn(r'(?m)^version: ".*"$', f'version: "{version}"', konfig.read_text("utf-8"))
+          assert n == 1, "version in config.yaml nicht gefunden"
+          konfig.write_text(text, "utf-8")
+
+          protokoll = add_on / "CHANGELOG.md"
+          alt = protokoll.read_text("utf-8")
+          if f"## {version}\n" not in alt:
+              kopf = "# Änderungsprotokoll\n\n"
+              assert alt.startswith(kopf)
+              protokoll.write_text(f"{kopf}## {version}\n\n{notizen}\n\n{alt[len(kopf):]}", "utf-8")
+          EOF
+      - name: Auf main committen
+        run: |
+          git diff --quiet && { echo "Nichts zu ändern"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add homeassistant/zeiterfassung/config.yaml homeassistant/zeiterfassung/CHANGELOG.md
+          git commit -m "Add-on-Version ${VERSION} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

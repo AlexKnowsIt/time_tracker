@@ -8,3 +8,6 @@ db.sqlite3*
 .vscode/
 staticfiles/
 .claude/worktrees/
+dist/
+build/
+out/

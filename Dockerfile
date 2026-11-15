@@ -21,8 +21,11 @@ RUN DJANGO_SECRET_KEY=nur-fuer-den-build python manage.py collectstatic --noinpu
     && useradd --system --create-home app \
     && mkdir /data && chown app:app /data
 
-USER app
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# Kein USER: der Entrypoint gibt Root nur im Home-Assistant-Add-on nicht ab (dort gehört /data root)
 VOLUME /data
 EXPOSE 8000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn zeiterfassung.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -"]
