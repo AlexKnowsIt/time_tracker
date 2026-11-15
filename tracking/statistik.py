@@ -6,6 +6,8 @@ werden paarweise entfernt. Wo etwas nicht berechenbar ist (zu wenig Werte, konst
 kommt None zurück statt einer Ausnahme.
 """
 
+import itertools
+import math
 import random
 import statistics
 from bisect import bisect_left, bisect_right
@@ -176,3 +178,117 @@ def permutation_p_korrelation(x, y, n=1000, rng=None):
         if abs(r) >= schwelle:
             treffer += 1
     return (treffer + 1) / (n + 1)
+
+
+# --- Selbstexperimente: Randomisierungstest unter dem tatsächlichen Schema ------------------
+
+MIN_JE_BEDINGUNG = 3  # Tage mit Wert je Bedingung, sonst keine Auswertung
+MAX_EXAKT = 20_000  # bis zu so vielen zulässigen Zuweisungen wird exakt über alle gezählt
+
+
+def median_differenz(werte, gruppen, mindestens=MIN_JE_BEDINGUNG):
+    """Median(B) − Median(A); ``werte`` und ``gruppen`` ("A"/"B") sind gleich lang, None fällt weg.
+
+    None, wenn eine Bedingung weniger als ``mindestens`` Werte hat.
+    """
+    a = [w for w, g in zip(werte, gruppen, strict=True) if g == "A" and w is not None]
+    b = [w for w, g in zip(werte, gruppen, strict=True) if g == "B" and w is not None]
+    if len(a) < mindestens or len(b) < mindestens:
+        return None
+    return statistics.median(b) - statistics.median(a)
+
+
+def _einheiten(zuweisung, laenge):
+    return [zuweisung[i] for i in range(0, len(zuweisung), laenge)]
+
+
+def anzahl_zuweisungen(design, einheiten, k_b):
+    """Zahl der nach dem Design zulässigen Zuweisungen (Einheiten = Tage bzw. Blöcke/Phasen)."""
+    return 2 if design == "abab" else math.comb(einheiten, k_b)
+
+
+def _zulaessige_einheiten(design, m, k_b):
+    """Alle zulässigen Zuweisungen auf Einheiten-Ebene als Tupel aus "A"/"B"."""
+    if design == "abab":
+        yield from (("A", "B") * (m // 2), ("B", "A") * (m // 2))
+        return
+    for b_pos in itertools.combinations(range(m), k_b):
+        gewaehlt = set(b_pos)
+        yield tuple("B" if i in gewaehlt else "A" for i in range(m))
+
+
+def _zufaellige_einheit(design, m, k_b, rng):
+    if design == "abab":
+        return ("A", "B") * (m // 2) if rng.random() < 0.5 else ("B", "A") * (m // 2)
+    gewaehlt = set(rng.sample(range(m), k_b))
+    return tuple("B" if i in gewaehlt else "A" for i in range(m))
+
+
+def randomisierungstest(
+    werte, zuweisung, design="tageweise", blocklaenge=1, n_perm=5000, rng=None, max_exakt=MAX_EXAKT
+):
+    """Randomisierungstest der Mediandifferenz B−A (Kratochwill & Levin 2010).
+
+    Die Zuweisung wird so neu gezogen, wie sie ursprünglich gezogen wurde: tageweise = gleich
+    viele B-Tage beliebig verteilt; Blöcke = ganze Blöcke von ``blocklaenge`` Tagen mit gleicher
+    Zahl B-Blöcke; ABAB = nur ABAB oder BABA (4 Phasen à ``blocklaenge`` Tage). Gibt es höchstens
+    ``max_exakt`` zulässige Zuweisungen, wird über alle gezählt (exakter p-Wert); sonst
+    Monte-Carlo mit ``n_perm`` Ziehungen, p = (Treffer + 1) / (n_perm + 1). Zweiseitig.
+
+    Rückgabe: dict mit beobachtet, p, exakt, n_zuweisungen und p_min (kleinster erreichbarer
+    p-Wert dieses Schemas, 1/n_zuweisungen); None, wenn eine Bedingung zu wenige Werte hat.
+    ABAB hat nur 2 Zuweisungen: der Test kann nie unter p = 0,5 kommen und bestätigt nichts.
+    """
+    rng = rng or random.Random(0)
+    n = len(werte)
+    if len(zuweisung) != n:
+        raise ValueError("werte und zuweisung müssen gleich lang sein.")
+    laenge = 1 if design == "tageweise" else blocklaenge
+    einheiten = _einheiten(zuweisung, laenge)
+    m, k_b = len(einheiten), einheiten.count("B")
+    if design == "abab" and tuple(einheiten) not in (("A", "B") * (m // 2), ("B", "A") * (m // 2)):
+        raise ValueError("Die Zuweisung ist kein ABAB-Muster.")
+    beobachtet = median_differenz(werte, zuweisung)
+    if beobachtet is None:
+        return None
+    gesamt = anzahl_zuweisungen(design, m, k_b)
+    schwelle = abs(beobachtet) - 1e-9
+
+    def trifft(einheit):
+        tage = [e for e in einheit for _ in range(laenge)][:n]
+        diff = median_differenz(werte, tage, mindestens=1)
+        return diff is None or abs(diff) >= schwelle  # zu leere Gruppe: im Zweifel Treffer
+
+    exakt = gesamt <= max_exakt
+    if exakt:
+        treffer = sum(trifft(e) for e in _zulaessige_einheiten(design, m, k_b))
+        p, p_min = treffer / gesamt, 1 / gesamt
+    else:
+        treffer = sum(trifft(_zufaellige_einheit(design, m, k_b, rng)) for _ in range(n_perm))
+        p, p_min = (treffer + 1) / (n_perm + 1), 1 / (n_perm + 1)
+    return {
+        "beobachtet": beobachtet,
+        "p": p,
+        "exakt": exakt,
+        "n_zuweisungen": gesamt,
+        "n_perm": None if exakt else n_perm,
+        "p_min": p_min,
+    }
+
+
+def delta_mit_ki(b, a, n=1000, rng=None):
+    """Cliff's Delta (B gegen A) und 95-%-Bootstrap-Intervall (je Bedingung neu gezogen).
+
+    Rückgabe (delta, unten, oben); (None, None, None) ohne Werte. Die Tage innerhalb einer
+    Bedingung gelten als austauschbar, weil die Bedingung zufällig zugewiesen wurde.
+    """
+    rng = rng or random.Random(0)
+    b = [v for v in b if v is not None]
+    a = [v for v in a if v is not None]
+    delta = cliffs_delta(b, a)
+    if delta is None:
+        return None, None, None
+    ergebnisse = sorted(
+        cliffs_delta(rng.choices(b, k=len(b)), rng.choices(a, k=len(a))) for _ in range(n)
+    )
+    return delta, ergebnisse[int(0.025 * n)], ergebnisse[min(n - 1, int(0.975 * n))]

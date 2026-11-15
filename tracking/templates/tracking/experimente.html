@@ -1,0 +1,49 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Experimente · Zeiterfassung{% endblock %}
+{% block inhalt %}
+<h1>Experimente</h1>
+<p class="klein text-lang">Ein Zusammenhang aus „Muster“ sagt nicht, was wirkt. Ein Selbstexperiment prüft es: Die Bedingung jedes Tages wird vorab zufällig zugewiesen, am Ende zeigt die App den Unterschied vorsichtig als Hinweis, nie als Beweis. <a href="{% url 'muster' %}">Zurück zu Muster</a></p>
+
+{% if laufend %}
+<h2 class="abschnitt">Läuft gerade</h2>
+{% include "tracking/_experiment_laufend.html" with l=laufend %}
+{% endif %}
+
+<h2 class="abschnitt">Beendete Experimente</h2>
+{% for b in beendete %}
+<section class="karte" aria-labelledby="exp-{{ b.experiment.pk }}">
+  <h3 id="exp-{{ b.experiment.pk }}"><a href="{% url 'experiment_detail' b.experiment.pk %}">{{ b.experiment.titel }}</a></h3>
+  <p class="klein">{{ b.experiment.start|date:"d.m." }}–{{ b.experiment.ende|date:"d.m.Y" }} · {{ b.ziel_label }}</p>
+  {% include "tracking/_experiment_ergebnis.html" with e=b.ergebnis kompakt=True %}
+</section>
+{% empty %}
+<p class="leer-hinweis">Noch kein Experiment beendet.</p>
+{% endfor %}
+
+<h2 class="abschnitt">Vorlagen</h2>
+<p class="klein text-lang">Jede Vorlage ist eine Wenn-dann-Regel mit Quelle. Du kannst sie vor dem Start ändern.{% if laufend %} Ein neues Experiment startet erst, wenn das laufende beendet oder abgebrochen ist.{% endif %}</p>
+<ul class="vorlagen">
+  {% for v in vorlagen %}
+  <li class="karte vorlage">
+    <h3>{{ v.titel }}</h3>
+    <p class="regel">{{ v.regel }}</p>
+    <p class="klein">{{ v.design_text }} · Zielgröße: {{ v.ziel_label }}</p>
+    <p class="klein">{{ v.hinweis }}</p>
+    {% if not laufend %}<a class="btn btn-sekundaer btn-klein" href="{% url 'experiment_neu' %}?vorlage={{ v.key }}">Mit dieser Vorlage starten</a>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if not laufend %}
+<p><a class="btn btn-primaer" href="{% url 'experiment_neu' %}">Eigenes Experiment anlegen</a></p>
+{% endif %}
+
+{% if abgebrochene %}
+<h2 class="abschnitt">Abgebrochen</h2>
+<ul class="liste karten-liste">
+  {% for e in abgebrochene %}
+  <li><div class="liste-text"><strong><a href="{% url 'experiment_detail' e.pk %}">{{ e.titel }}</a></strong>
+    <span class="klein">{{ e.start|date:"d.m.Y" }} · Vermerk: {{ e.abbruch_vermerk }}</span></div></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

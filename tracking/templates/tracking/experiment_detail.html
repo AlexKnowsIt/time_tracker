@@ -1,0 +1,55 @@
+{% extends "tracking/base.html" %}
+{% block titel %}{{ experiment.titel }} · Experimente{% endblock %}
+{% block seitenklasse %}schmal{% endblock %}
+{% block inhalt %}
+<p class="klein"><a href="{% url 'experimente' %}">← Experimente</a></p>
+<h1>{{ experiment.titel }}</h1>
+<p class="regel">{{ experiment.regel_satz }}</p>
+<p class="klein"><span class="badge{% if experiment.status != 'laeuft' %} neutral{% endif %}">{{ experiment.get_status_display }}</span>
+  {{ experiment.start|date:"d.m.Y" }}–{{ experiment.ende|date:"d.m.Y" }} · {{ design_text }} · Zielgröße: {{ ziel_label }}</p>
+
+<h2 class="abschnitt">Hypothese</h2>
+<p>{{ experiment.hypothese }}</p>
+<p class="klein">Bedingung A: {{ experiment.bedingung_a }}. Bedingung B: die Regel.</p>
+
+{% if experiment.status == "laeuft" %}
+<div class="fortschritt" role="img" aria-label="Tag {{ laufend.fortschritt.tag }} von {{ laufend.fortschritt.von }}"><span style="width:{% widthratio laufend.fortschritt.tag laufend.fortschritt.von 100 %}%"></span></div>
+<p class="klein">Tag {{ laufend.fortschritt.tag }} von {{ laufend.fortschritt.von }}. Das Ergebnis erscheint erst nach dem Ende, damit Zwischenstände dein Verhalten nicht lenken.</p>
+{% endif %}
+
+{% if experiment.status == "abgebrochen" %}
+<div class="karte"><p><strong>Abgebrochen.</strong> Vermerk: {{ experiment.abbruch_vermerk }}</p></div>
+{% endif %}
+
+{% if ergebnis %}
+<h2 class="abschnitt">Ergebnis</h2>
+<section class="karte">{% include "tracking/_experiment_ergebnis.html" with e=ergebnis %}</section>
+{% endif %}
+
+<h2 class="abschnitt">Zuweisung der Tage</h2>
+<p class="klein">Beim Start zufällig festgelegt (Seed {{ experiment.seed }}) und unveränderlich.</p>
+<ul class="liste">
+  {% for t in tage %}
+  <li{% if t.heute %} aria-current="date"{% endif %}>
+    <div class="liste-text"><strong>{{ t.tag.datum|date:"D d.m." }}</strong>
+      <span class="klein">{% if t.tag.bedingung == "B" %}Bedingung B: Regel{% else %}Bedingung A: wie immer{% endif %}{% if t.tag.eingehalten is not None %} · {% if t.tag.eingehalten %}eingehalten{% else %}nicht eingehalten{% endif %}{% endif %}{% if t.wert %} · Wert {{ t.wert }}{% endif %}</span></div>
+    <span class="badge{% if t.tag.bedingung == 'A' %} neutral{% endif %}">{{ t.tag.bedingung }}</span>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if experiment.status == "laeuft" %}
+<h2 class="abschnitt">Abbrechen</h2>
+<form method="post" action="{% url 'experiment_abbrechen' experiment.pk %}" class="formular" onsubmit="return confirm('Experiment wirklich abbrechen? Das lässt sich nicht rückgängig machen.')">
+  {% csrf_token %}
+  {% if abbruch_form.non_field_errors %}<div class="fehler" role="alert">{{ abbruch_form.non_field_errors }}</div>{% endif %}
+  <div class="feld">
+    <label for="{{ abbruch_form.vermerk.id_for_label }}">{{ abbruch_form.vermerk.label }}</label>
+    {{ abbruch_form.vermerk }}
+    <small>{{ abbruch_form.vermerk.help_text }}</small>
+    {% if abbruch_form.vermerk.errors %}<div class="fehler" role="alert">{{ abbruch_form.vermerk.errors }}</div>{% endif %}
+  </div>
+  <button class="btn btn-gefahr">Experiment abbrechen</button>
+</form>
+{% endif %}
+{% endblock %}

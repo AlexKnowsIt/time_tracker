@@ -13,7 +13,8 @@
     <legend>{{ feld.label }}</legend>
     <div class="pillen">{% for radio in feld %}<label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
     {% if feld.name == "abgeschaltet" %}<p class="pillen-skala" aria-hidden="true"><span>gar nicht</span><span>sehr gut</span></p>
-    {% elif feld.name != "fortschritt" %}<p class="pillen-skala" aria-hidden="true"><span>schwach</span><span>stark</span></p>{% endif %}
+    {% elif feld.name == "produktivitaet" or feld.name == "zufriedenheit" %}<p class="pillen-skala" aria-hidden="true"><span>schwach</span><span>stark</span></p>{% endif %}
+    {% if feld.name == "eingehalten" %}<p class="klein">Zählt nur für die Auswertung als Nebenergebnis. Ehrlich antworten hilft mehr als „Ja“.</p>{% endif %}
     {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
   </fieldset>
   {% else %}

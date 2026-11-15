@@ -1,0 +1,10 @@
+<section class="karte experiment-laufend" aria-label="Laufendes Experiment">
+  <h3><a href="{% url 'experiment_detail' l.experiment.pk %}">{{ l.experiment.titel }}</a></h3>
+  <p class="regel">{{ l.experiment.regel_satz }}</p>
+  <p class="klein">{{ l.design_text }} · Zielgröße: {{ l.ziel_label }}</p>
+  <div class="fortschritt" role="img" aria-label="Tag {{ l.fortschritt.tag }} von {{ l.fortschritt.von }}"><span style="width:{% widthratio l.fortschritt.tag l.fortschritt.von 100 %}%"></span></div>
+  <p class="klein">{% if l.beginnt_am %}Beginnt am {{ l.beginnt_am|date:"d.m.Y" }}.{% else %}Tag {{ l.fortschritt.tag }} von {{ l.fortschritt.von }}.{% endif %}
+    {% if l.heute %}Heute: <span class="badge{% if l.heute.bedingung == 'A' %} neutral{% endif %}">Bedingung {{ l.heute.bedingung }}</span>{% endif %}
+    {% if l.antworten %}Eingehalten: {{ l.eingehalten }} von {{ l.antworten }} Antworten.{% endif %}</p>
+  <p class="klein">Ergebnisse erscheinen erst nach dem Ende. Zwischenstände würden dein Verhalten lenken.</p>
+</section>

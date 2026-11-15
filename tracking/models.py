@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -41,6 +42,11 @@ class Eintrag(models.Model):
         "Aufgabe abgeschlossen?", null=True, blank=True, help_text="Leer = nicht beantwortet"
     )
     unterbrochen = models.BooleanField("Unterbrochen", default=False)
+    nachgetragen = models.BooleanField(
+        "Nachgetragen",
+        default=False,
+        help_text="Per Nachtragen-Formular oder API angelegt, nicht per Timer: rekonstruiert",
+    )
 
     class Meta:
         verbose_name_plural = "Einträge"
@@ -111,6 +117,8 @@ class Tagesbewertung(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
     schlaf_h = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+    bettzeit = models.TimeField(null=True, blank=True, help_text="Letzte Nacht ins Bett gegangen")
+    aufstehzeit = models.TimeField(null=True, blank=True, help_text="Heute aufgestanden")
     notiz = models.TextField(blank=True, help_text="Was hat geholfen, was hat gestört?")
 
     class Meta:
@@ -193,3 +201,117 @@ class ApiToken(models.Model):
         klartext = cls.PRAEFIX + secrets.token_urlsafe(32)
         token = cls.objects.create(nutzer=nutzer, name=name, token_hash=cls.hash_von(klartext))
         return token, klartext
+
+
+class Experiment(models.Model):
+    """Selbstexperiment (Zielbild Stufe 4, docs/forschung.md). Die Zuweisung der Bedingungen
+    entsteht beim Start vorab (``ExperimentTag``). Nach dem Start sind alle Felder außer
+    ``status`` und ``abbruch_vermerk`` schreibgeschützt, damit niemand die Hypothese oder die
+    Zielgröße nachträglich dem Ergebnis anpasst (Daskalova et al. 2017)."""
+
+    class Design(models.TextChoices):
+        TAGEWEISE = "tageweise", "Tageweise zufällig"
+        BLOECKE = "bloecke", "Blöcke zufällig"
+        ABAB = "abab", "ABAB (feste Phasen)"
+
+    class Status(models.TextChoices):
+        LAEUFT = "laeuft", "Läuft"
+        BEENDET = "beendet", "Beendet"
+        ABGEBROCHEN = "abgebrochen", "Abgebrochen"
+
+    GESCHUETZT = (
+        "nutzer_id",
+        "titel",
+        "hypothese",
+        "regel_wenn",
+        "regel_dann",
+        "bedingung_a",
+        "bedingung_b",
+        "design",
+        "blocklaenge",
+        "zielgroesse",
+        "start",
+        "dauer_tage",
+        "seed",
+    )
+
+    nutzer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    titel = models.CharField(max_length=100)
+    hypothese = models.TextField(help_text="Was erwartest du? Vor dem Start festlegen.")
+    regel_wenn = models.CharField("Wenn", max_length=200)
+    regel_dann = models.CharField("Dann", max_length=200)
+    bedingung_a = models.CharField(max_length=200, default="Wie immer")
+    bedingung_b = models.CharField(max_length=420, blank=True, help_text="Leer = Wenn-dann-Regel")
+    design = models.CharField(max_length=10, choices=Design)
+    blocklaenge = models.PositiveSmallIntegerField(
+        default=1, help_text="Tage je Block (Blöcke) bzw. je Phase (ABAB)"
+    )
+    zielgroesse = models.CharField(max_length=30)
+    start = models.DateField()
+    dauer_tage = models.PositiveSmallIntegerField()
+    seed = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, choices=Status, default=Status.LAEUFT)
+    abbruch_vermerk = models.TextField(blank=True)
+    erstellt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Experimente"
+        ordering = ["-start", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["nutzer"],
+                condition=Q(status="laeuft"),
+                name="max_ein_laufendes_experiment",
+            ),
+        ]
+
+    def __str__(self):
+        return self.titel
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            alt = Experiment.objects.filter(pk=self.pk).values(*self.GESCHUETZT).first()
+            if alt and any(alt[f] != getattr(self, f) for f in self.GESCHUETZT):
+                raise ValueError("Ein gestartetes Experiment lässt sich nicht mehr ändern.")
+        elif not self.bedingung_b:
+            self.bedingung_b = f"Wenn {self.regel_wenn}, dann {self.regel_dann}."
+        super().save(*args, **kwargs)
+
+    @property
+    def regel_satz(self):
+        return self.bedingung_b or f"Wenn {self.regel_wenn}, dann {self.regel_dann}."
+
+    @property
+    def ende(self):
+        return self.start + timedelta(days=self.dauer_tage - 1)
+
+
+class ExperimentTag(models.Model):
+    """Zugewiesene Bedingung eines Tages. Datum und Bedingung sind nach dem Anlegen fest
+    (der Randomisierungstest braucht genau diese Zuweisung); nur ``eingehalten`` ändert sich."""
+
+    class Bedingung(models.TextChoices):
+        A = "A", "A (wie immer)"
+        B = "B", "B (Regel)"
+
+    experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE, related_name="tage")
+    datum = models.DateField()
+    bedingung = models.CharField(max_length=1, choices=Bedingung)
+    eingehalten = models.BooleanField(null=True, blank=True, help_text="Leer = nicht beantwortet")
+
+    class Meta:
+        verbose_name_plural = "Experimenttage"
+        ordering = ["datum"]
+        constraints = [
+            models.UniqueConstraint(fields=["experiment", "datum"], name="ein_tag_je_experiment"),
+        ]
+
+    def __str__(self):
+        return f"{self.datum}: {self.bedingung}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            alt = ExperimentTag.objects.filter(pk=self.pk).values("datum", "bedingung").first()
+            if alt and (alt["datum"], alt["bedingung"]) != (self.datum, self.bedingung):
+                raise ValueError("Die Zuweisung eines Experimenttags ist unveränderlich.")
+        super().save(*args, **kwargs)

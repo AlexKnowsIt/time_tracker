@@ -10,6 +10,23 @@
   const meldung = document.getElementById("plan-meldung");
   const loeschen = document.getElementById("plan-loeschen");
   let aktuell = null; // {event} beim Bearbeiten, {start, ende} beim Anlegen
+  const realistisch = document.getElementById("plan-realistisch");
+  let faktoren = {};
+  try { faktoren = JSON.parse(document.getElementById("plan-faktoren").textContent) || {}; } catch (e) { /* ohne Hinweis */ }
+  const dauerText = (min) => (min >= 60 ? Math.floor(min / 60) + " h " + String(min % 60).padStart(2, "0") + " min" : min + " min");
+  // Plan-Faktor (Buehler et al. 1994): geplante Dauer mal dein Median Ist/Plan der Kategorie-Art
+  function zeigeRealistisch() {
+    if (!aktuell) return;
+    const e = aktuell.event;
+    const start = e ? e.start : aktuell.start, ende = e ? e.end : aktuell.ende;
+    const art = feld.kat.selectedOptions[0] && feld.kat.selectedOptions[0].dataset.art;
+    const faktor = faktoren[art];
+    if (!faktor || !start || !ende) { realistisch.hidden = true; return; }
+    const geplant = Math.round((ende - start) / 60000);
+    realistisch.textContent = "Realistisch: " + dauerText(Math.round(geplant * faktor)) + " (du schaffst bei dieser Art im Median " + Math.round(faktor * 100) + " % des Plans).";
+    realistisch.hidden = false;
+  }
+  feld.kat.addEventListener("change", zeigeRealistisch);
 
   // Kategoriefarben im Dunkelmodus aufhellen und passende Schriftfarbe wählen (wie --kategorie-mischung im CSS)
   const dunkel = window.matchMedia("(prefers-color-scheme: dark)");
@@ -123,6 +140,7 @@
     loeschen.hidden = !props;
     fehler.hidden = true;
     dialog.showModal();
+    zeigeRealistisch();
     feld.kat.focus();
   }
 

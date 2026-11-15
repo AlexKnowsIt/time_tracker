@@ -45,7 +45,10 @@ MERKMALE = [
     ("wasser_12_16_ml", "Wasser 12 bis 16 Uhr", "ml"),
     ("anteil_unterbrochen", "Anteil unterbrochener Arbeitsblöcke", "prozent"),
     ("anteil_abgeschlossen", "Anteil abgeschlossener Arbeitsblöcke", "prozent"),
+    ("anteil_nachgetragen", "Anteil nachgetragener Einträge", "prozent"),
     ("schlaf_h", "Schlaf (Stunden)", "zahl"),
+    ("schlafmitte", "Schlafmitte", "uhrzeit"),
+    ("letzter_kaffee_vortag", "Letzter Kaffee am Vortag", "uhrzeit"),
     ("schlaf_schnitt_7", "Schlaf-Schnitt der letzten 7 Nächte", "zahl"),
     ("produktivitaet_vortag", "Produktivität des Vortags", "zahl"),
     ("abgeschaltet_vortag", "Abschalten am Vortag (1–5)", "zahl"),
@@ -53,6 +56,8 @@ MERKMALE = [
 ]
 _KONTEXT = {
     "schlaf_h",
+    "schlafmitte",
+    "letzter_kaffee_vortag",
     "schlaf_schnitt_7",
     "produktivitaet_vortag",
     "abgeschaltet_vortag",
@@ -77,6 +82,64 @@ def formatiere(wert, format):
     return f"{wert:.1f}".replace(".", ",")
 
 
+def minuten_seit_mitternacht(zeitpunkt, tag):
+    """Lokale Wanduhr in Minuten seit Mitternacht des Tages ``tag`` (danach über 1440)."""
+    z = timezone.localtime(zeitpunkt)
+    return (z.date() - tag).days * 1440 + z.hour * 60 + z.minute + z.second / 60
+
+
+def letzter_kaffee_min(messungen, tag):
+    """Uhrzeit des letzten Kaffees des Tages ``tag`` in Minuten seit Mitternacht, sonst None."""
+    zeiten = [minuten_seit_mitternacht(x.zeitpunkt, tag) for x in messungen if x.typ == "kaffee"]
+    return max(zeiten) if zeiten else None
+
+
+SCHLAF_MIN_H, SCHLAF_MAX_H = 0.5, 16  # darunter/darüber gilt Bett-/Aufstehzeit als Eingabefehler
+
+
+def _schlaf_spanne(bettzeit, aufstehzeit):
+    """(Bettzeit, Aufstehzeit) in Minuten relativ zur Mitternacht vor dem Aufstehen, sonst None.
+
+    Eine Bettzeit ab 12 Uhr gehört zum Vorabend (negativ), davor zur Nacht danach.
+    """
+    if bettzeit is None or aufstehzeit is None:
+        return None
+    bett = bettzeit.hour * 60 + bettzeit.minute
+    auf = aufstehzeit.hour * 60 + aufstehzeit.minute
+    if bett >= 12 * 60:
+        bett -= 1440
+    dauer_h = (auf - bett) / 60
+    return (bett, auf) if SCHLAF_MIN_H <= dauer_h <= SCHLAF_MAX_H else None
+
+
+def schlafdauer_h(bettzeit, aufstehzeit):
+    """Schlafdauer in Stunden (eine Nachkommastelle) oder None bei fehlender/unplausibler Zeit."""
+    spanne = _schlaf_spanne(bettzeit, aufstehzeit)
+    return round((spanne[1] - spanne[0]) / 60, 1) if spanne else None
+
+
+def schlafmitte(bettzeit, aufstehzeit):
+    """Mitte zwischen Bett- und Aufstehzeit in Minuten seit Mitternacht (z. B. 02:45 = 165)."""
+    spanne = _schlaf_spanne(bettzeit, aufstehzeit)
+    return (spanne[0] + spanne[1]) / 2 if spanne else None
+
+
+SOZIAL_MIN_TAGE = 3  # je Gruppe (freie Tage, Werktage)
+
+
+def sozialer_jetlag(nachtmitten):
+    """Sozialer Jetlag in Minuten: Schlafmitte freier Tage minus Schlafmitte der Werktage.
+
+    ``nachtmitten``: Paare (werktag: bool, schlafmitte_min). Werktag = Tag mit Arbeitseinträgen.
+    Positiv = an freien Tagen später. None, wenn eine Gruppe unter SOZIAL_MIN_TAGE Tage hat.
+    """
+    werk = [m for w, m in nachtmitten if w and m is not None]
+    frei = [m for w, m in nachtmitten if not w and m is not None]
+    if len(werk) < SOZIAL_MIN_TAGE or len(frei) < SOZIAL_MIN_TAGE:
+        return None
+    return sum(frei) / len(frei) - sum(werk) / len(werk)
+
+
 def tagesmerkmale(eintraege, messungen, jetzt):
     """Kennzahlen eines Tages. Überlappende Einträge werden nicht doppelt gezählt."""
     ergebnis = dict.fromkeys(_SCHLUESSEL)
@@ -96,8 +159,7 @@ def tagesmerkmale(eintraege, messungen, jetzt):
     ergebnis["wochentag"] = tag.weekday()
 
     def minuten(z):
-        z = timezone.localtime(z)
-        return (z.date() - tag).days * 1440 + z.hour * 60 + z.minute + z.second / 60
+        return minuten_seit_mitternacht(z, tag)
 
     def dauer(t):
         return (t[1] - t[0]).total_seconds() / 60
@@ -133,6 +195,10 @@ def tagesmerkmale(eintraege, messungen, jetzt):
         erste_pause=minuten(pausen[0][0]) if pausen else None,
         mittlere_pause_min=sum(dauer(t) for t in pausen) / len(pausen) if pausen else None,
     )
+
+    ergebnis["anteil_nachgetragen"] = sum(
+        1 for t in teile if getattr(t[3], "nachgetragen", False)
+    ) / len(teile)
 
     if arbeit:
         ergebnis["beginn"] = minuten(arbeit[0][0])

@@ -19,6 +19,8 @@ HYPOTHESE_AB_R = 0.3
 MAX_LUECKEN_MODELL = 0.3
 RIDGE_LAMBDA = 1.0
 BOOTSTRAP_BLOCK = 5
+# Merkmale, die mit der Zielgröße zusammenfallen und deshalb nicht als „Muster“ taugen
+AUSGESCHLOSSEN = {"schlaf_h": {"schlaf_h", "schlaf_schnitt_7", "schlafmitte"}}
 
 
 def _delta_drittel(paare):
@@ -53,6 +55,8 @@ def vergleich(tage, zielgroesse, rng=None, n_boot=200):
         return [m[key] for _, m in gruppe if m.get(key) is not None]
 
     for key, label, format in MERKMALE:
+        if key in AUSGESCHLOSSEN.get(zielgroesse, ()):
+            continue
         w_gut, w_schwach = werte(gut, key), werte(schwach, key)
         if len(w_gut) < MIN_WERTE or len(w_schwach) < MIN_WERTE:
             continue
@@ -105,6 +109,8 @@ def korrelationen(tage, zielgroesse, rng=None, n_boot=200, n_perm=400):
     ergebnis["n_eff"] = statistik.effektives_n(n, ergebnis["lag1"])
     zeilen = []
     for key, label, format in MERKMALE:
+        if key in AUSGESCHLOSSEN.get(zielgroesse, ()):
+            continue
         x, y = statistik.ohne_none(*_bereinigt(tage, key, zielgroesse))
         if len(x) < MIN_PAARE:
             continue
@@ -175,6 +181,8 @@ def mehrfachmodell(tage, zielgroesse, lam=RIDGE_LAMBDA):
         return ergebnis
     spalten = []
     for key, label, format in MERKMALE:
+        if key in AUSGESCHLOSSEN.get(zielgroesse, ()):
+            continue
         roh = [m.get(key) for _, m in tage]
         vorhanden = [w for w in roh if w is not None]
         if not vorhanden or (n - len(vorhanden)) / n > MAX_LUECKEN_MODELL:

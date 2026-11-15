@@ -1,0 +1,36 @@
+{% extends "tracking/base.html" %}
+{% block titel %}Neues Experiment · Zeiterfassung{% endblock %}
+{% block seitenklasse %}schmal{% endblock %}
+{% block inhalt %}
+<h1>Neues Experiment</h1>
+{% if vorlage %}<p class="klein">Vorlage „{{ vorlage.titel }}“. {{ vorlage.hinweis }}</p>{% endif %}
+<p class="klein">Nach dem Start lassen sich Hypothese, Regel, Zielgröße und Dauer nicht mehr ändern, und die Bedingung jedes Tages steht fest. So kannst du nichts nachträglich zurechtbiegen. Abbrechen geht nur mit Vermerk.</p>
+<form method="post" class="formular">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="fehler" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  {% for feld in form %}
+  {% if feld.name == "regel_wenn" %}
+  <fieldset class="feld wenn-dann">
+    <legend>Regel (Wenn-dann, Gollwitzer &amp; Sheeran 2006)</legend>
+    <div class="satz"><label for="{{ feld.id_for_label }}"><span class="satz-wort">Wenn</span></label>{{ feld }}</div>
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
+    {% elif feld.name == "regel_dann" %}
+    <div class="satz"><label for="{{ feld.id_for_label }}"><span class="satz-wort">dann</span></label>{{ feld }}</div>
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
+    <small>Beispiel: Wenn es 14 Uhr ist, dann trinke ich keinen Kaffee mehr.</small>
+  </fieldset>
+  {% else %}
+  <div class="feld">
+    <label for="{{ feld.id_for_label }}">{{ feld.label }}</label>
+    {{ feld }}
+    {% if feld.help_text %}<small>{{ feld.help_text }}</small>{% endif %}
+    {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+  <div class="knopfzeile">
+    <button class="btn btn-primaer">Experiment starten</button>
+    <a class="btn btn-sekundaer" href="{% url 'experimente' %}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

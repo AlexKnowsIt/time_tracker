@@ -7,8 +7,8 @@ unterscheiden. Die Ergebnisse sind Hypothesen („Unterschiede, keine Ursachen�
 
 Ziel, Architektur und Phasen: [docs/zielbild.md](docs/zielbild.md). Stand: Phase 0 bis 2,
 Plan vs. Ist sowie API und MCP umgesetzt (Erfassen, Woche, Muster, Testdaten, Docker/CI,
-Plankalender, JSON-API, MCP-Server). Als
-Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt unverändert im Branch
+Plankalender, JSON-API, MCP-Server), Phase 3 (Korrelationen, Selbstexperimente, Plan-Faktor,
+Wochenbericht per MCP). Der alte Prototyp liegt unverändert im Branch
 `archiv-2021`.
 
 ## Screenshots
@@ -24,11 +24,14 @@ Nächstes: Phase 3 (Korrelationen, Selbstexperimente). Der alte Prototyp liegt u
     <td><img src="docs/screenshots/muster.png" width="240" alt="Muster mit Verlaufsdiagramm"></td>
     <td><img src="docs/screenshots/jetzt-dunkel.png" width="240" alt="Jetzt im Dunkelmodus"></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/experimente.png" width="240" alt="Experimente: laufendes Experiment und beendetes mit Ergebnis"></td>
+  </tr>
 </table>
 
 Desktop (ab 900 px Seitenleiste):
 
-<img src="docs/screenshots/plan.png" width="720" alt="Plan: Wochenkalender mit Planblöcken und erfassten Einträgen im Hintergrund">
+<img src="docs/screenshots/plan.png" width="720" alt="Plan mit Plan-Faktor und dem Hinweis „Realistisch“ im Planblock-Dialog">
 <img src="docs/screenshots/muster-desktop.png" width="720" alt="Muster auf dem Desktop">
 
 ## Funktionen
@@ -50,6 +53,14 @@ Desktop (ab 900 px Seitenleiste):
   Benjamini-Hochberg), ab 90 Tagen ein Mehrfachmodell (Ridge, Top 5, explorativ). Davor steht
   je Abschnitt, wie viele Tage noch fehlen. Alles sind Hypothesen, keine Ursachen; Grundlage:
   `docs/forschung.md`.
+- **Experimente** (`/experimente/`): Selbstexperimente mit zufällig vorab zugewiesener Bedingung je
+  Tag (tageweise, Blöcke, ABAB), acht Vorlagen mit Quelle, eigene Wenn-dann-Regeln. Hypothese,
+  Zielgröße und Dauer sind nach dem Start fest, Abbruch nur mit Vermerk, höchstens ein Experiment
+  läuft. Auf „Jetzt“ steht die heutige Bedingung, im Tagesabschluss die Frage nach der Einhaltung.
+  Das Ergebnis (Randomisierungstest der Mediandifferenz, Cliff's Delta, Einhaltung) erscheint erst
+  nach dem Ende und ist vorsichtig formuliert. Erreichbar über „Muster“ und die Seitenleiste.
+- **Plan-Faktor** (auf „Plan“): Median Ist/Plan je Art der letzten 28 Tage („Deep Work: du schaffst
+  im Median 70 % des Plans“), im Planblock-Dialog als „Realistisch: …“.
 - **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6 per CDN, mobil
   Tagesansicht). Planblöcke per Ziehen anlegen, per Drag & Drop verschieben, Klick = bearbeiten
   oder löschen; erfasste Einträge erscheinen gestreift daneben. Planblöcke überschneiden sich
@@ -94,7 +105,9 @@ Der MCP-Server lässt Claude Code oder Claude Desktop die Zeiterfassung bedienen
 Work“, „trage gestern 9 bis 10 Uhr Mails nach“, „wie war meine Woche?“). Er ruft die JSON-API
 (`/api/v1/`) auf; die Tools heißen `aktueller_stand`, `timer_starten`, `timer_stoppen`,
 `trinken_erfassen`, `eintrag_nachtragen`, `tag_abrufen`, `tag_bewerten`, `woche_abrufen`,
-`muster_abrufen`, `plan_abrufen`, `planblock_anlegen`, `planblock_loeschen`.
+`muster_abrufen`, `plan_abrufen`, `planblock_anlegen`, `planblock_loeschen`, `experiment_status`,
+`experiment_starten`, `experiment_tag_bestaetigen`, `wochenbericht_daten` sowie der Prompt
+`wochenbericht` (kurzer, vorsichtiger Rückblick mit Experiment-Vorschlägen, ohne Server-LLM).
 
 1. In der App unter **Einstellungen** ein Token erzeugen und sofort kopieren (wird nur einmal
    angezeigt, gespeichert wird nur der Hash).
@@ -146,7 +159,10 @@ und für jeden Werktag (Wochenenden manchmal) bis gestern Einträge, Wasser- und
 und die Bewertungen. Eingebautes Muster: frühe erste Pause, lange Deep-Work-Blöcke und mehr
 Wasser erhöhen die Produktivität, unterbrochene Blöcke senken sie; mehr Pausen, weniger Wechsel
 und Fortschritt (hängt mit langen Deep-Work-Blöcken zusammen) erhöhen die Zufriedenheit; später
-Kaffee kostet Schlaf der folgenden Nacht (plus Rauschen). Mit gleichem `--seed`
+Kaffee kostet Schlaf der folgenden Nacht (plus Rauschen). Dazu Bett-/Aufstehzeiten, einige
+nachgetragene Einträge, Planblöcke der letzten 28 Tage (Deep Work etwa 70 % geschafft), ein
+beendetes Experiment „Mikropausen“ (eingebauter Effekt auf die Zufriedenheit) und ein laufendes
+„Koffein-Schluss“. Mit gleichem `--seed`
 immer gleiche Daten. Der Befehl bricht ab, wenn der Nutzer schon Einträge, Messungen oder
 Bewertungen hat; echte und Testdaten werden nie gemischt. Am besten mit einer eigenen Datenbank
 (`DJANGO_DB_PATH=/tmp/demo.sqlite3`).

@@ -77,7 +77,7 @@
       <strong>{{ z.eintrag.kategorie.name }}</strong>
       <span class="zeit">{{ z.eintrag.start|time:"H:i" }}–{% if z.eintrag.ende %}{{ z.eintrag.ende|time:"H:i" }}{% else %}läuft{% endif %} · {{ z.dauer }}</span>
       {% if z.eintrag.notiz %}<span class="klein">{{ z.eintrag.notiz }}</span>{% endif %}
-      {% if z.eintrag.unterbrochen or z.eintrag.abgeschlossen is not None %}<span class="klein">{% if z.eintrag.unterbrochen %}unterbrochen{% endif %}{% if z.eintrag.unterbrochen and z.eintrag.abgeschlossen is not None %} · {% endif %}{% if z.eintrag.abgeschlossen is not None %}{% if z.eintrag.abgeschlossen %}abgeschlossen{% else %}nicht abgeschlossen{% endif %}{% endif %}</span>{% endif %}
+      {% if z.eintrag.unterbrochen or z.eintrag.abgeschlossen is not None or z.eintrag.nachgetragen %}<span class="klein markierungen">{% if z.eintrag.unterbrochen %}<span>unterbrochen</span>{% endif %}{% if z.eintrag.abgeschlossen is not None %}<span>{% if z.eintrag.abgeschlossen %}abgeschlossen{% else %}nicht abgeschlossen{% endif %}</span>{% endif %}{% if z.eintrag.nachgetragen %}<span>nachgetragen</span>{% endif %}</span>{% endif %}
     </div>
     <a class="icon-knopf" href="{% url 'eintrag_bearbeiten' z.eintrag.pk %}" aria-label="Eintrag {{ z.eintrag.kategorie.name }} {{ z.eintrag.start|time:'H:i' }} bearbeiten">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></a>

@@ -277,9 +277,32 @@ Grundlage für Methoden, Befunde und Experiment-Vorlagen ist `docs/forschung.md`
 - Abweichung: Bootstrap- und Permutationszahl sind für unter 1 s Rechenzeit reduziert
   (200 bzw. 400 statt 2 000).
 
-**Phase 3b: Experimente – offen**
+**Phase 3b: Experimente – umgesetzt**
 
-- Modell und Ansicht für Selbstexperimente (Vorlagen in `docs/forschung.md`), Plan-Faktor.
+- Modelle `Experiment` und `ExperimentTag` (Zuweisung beim Start vorab erzeugt, danach
+  unveränderlich; Hypothese, Regel, Zielgröße, Dauer schreibgeschützt; höchstens ein laufendes
+  Experiment je Nutzer per Constraint; Abbruch nur mit Vermerk). Designs: tageweise (balanciert
+  zufällig), Blöcke (ganze Blöcke balanciert), ABAB (feste Phasen, Start A oder B). Der Seed wird
+  gespeichert, die Zuweisung ist reproduzierbar. Abweichung: kein Status „geplant“, ein Experiment
+  läuft ab Anlage (Start heute bis in 14 Tagen).
+- Acht Vorlagen aus `docs/forschung.md` (`experimente.VORLAGEN`), Seite „Experimente“
+  (`/experimente/`): Laufendes, beendete mit Ergebnis, Vorlagen, eigenes Experiment mit
+  Wenn-dann-Regel. Navigation: kein sechster Tab, sondern Karte auf „Muster“, Eintrag in der
+  Desktop-Seitenleiste und Banner auf „Jetzt“. Auf „Jetzt“ steht „Heute im Experiment: Bedingung
+  B – Wenn …, dann …“, im Tagesabschluss die Frage nach der Einhaltung.
+- Auswertung (`statistik.py`, `experimente.py`, reine Funktionen): Randomisierungstest der
+  Mediandifferenz B−A unter dem tatsächlichen Schema (exakt bis 20 000 zulässige Zuweisungen,
+  sonst 5 000 Ziehungen), Cliff's Delta mit Bootstrap-Intervall, Einhaltung in Prozent. Primär nach
+  Zuweisung (Intention-to-treat), als Nebenergebnis ohne Tage mit „nicht eingehalten“ (ohne p).
+  Das Ergebnis erscheint erst nach dem Ende. ABAB hat nur zwei zulässige Zuweisungen (ABAB,
+  BABA): der Test kann nie unter p = 0,5 kommen, die App sagt das offen und beschreibt nur.
+- Plan-Faktor (`plan.plan_faktor`): Median Ist/Plan je Kategorie-Art der letzten 28 Tage mit
+  mindestens 5 Plantagen; auf der Plan-Seite, als Hinweis „Realistisch: …“ im Planblock-Dialog,
+  in der API (GET plan) und im MCP.
+- Erfassung: `Eintrag.nachgetragen` (Formular und API = True, Timer = False; Merkmal
+  `anteil_nachgetragen`, Fußnote in „Muster“ ab 50 %), Bett- und Aufstehzeit in der Bewertung
+  (berechnet `schlaf_h`, falls leer), Merkmale `schlafmitte`, `letzter_kaffee_vortag`, sozialer
+  Jetlag (28 Tage, nur als Kennzahl), Schlaf als dritte Zielgröße in „Muster“.
 
 ### Phase 4: Plan vs. Ist – umgesetzt (vorgezogen vor Phase 3)
 
@@ -324,7 +347,12 @@ Ziel: KI-Assistenten (Claude Code, Claude Desktop) bedienen die Zeiterfassung pe
 
 - Umgesetzt: CSV-Export (`/export.csv` je bewertetem Tag, `/export-eintraege.csv`; Semikolon,
   UTF-8 mit BOM, Dezimalkomma) und Regression über mehrere Merkmale (Ridge, siehe Phase 3a).
-- Offen: Wochenbericht per LLM.
+- Umgesetzt: Wochenbericht ohne Server-LLM. Das MCP-Tool `wochenbericht_daten` (API
+  `/api/v1/wochenbericht/<datum>`) liefert Woche, Merkmale, Muster-Hinweise und Experiment kompakt;
+  der MCP-Prompt `wochenbericht` weist das Modell an, vorsichtig (Hypothesen, keine Ursachen, Regeln
+  aus „Was die App nicht behauptet“) einen kurzen Rückblick mit ein bis zwei Experiment-Vorschlägen
+  zu schreiben. Dazu MCP-Tools `experiment_status`, `experiment_starten`,
+  `experiment_tag_bestaetigen`.
 
 ## 9. Bewusst nicht vorgesehen
 

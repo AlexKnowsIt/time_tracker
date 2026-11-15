@@ -11,6 +11,15 @@
   {% endfor %}
 </nav>
 
+<section class="karte hinweis experiment-hinweis" aria-label="Experimente">
+  {% if experiment %}
+  <p><strong>Experiment läuft:</strong> <a href="{% url 'experiment_detail' experiment.pk %}">{{ experiment.titel }}</a> (bis {{ experiment.ende|date:"d.m." }}).</p>
+  {% else %}
+  <p><strong>Eine Hypothese prüfen:</strong> Mit einem Selbstexperiment wird aus einem Muster ein Hinweis auf eine Wirkung.</p>
+  {% endif %}
+  <a class="btn btn-sekundaer btn-klein" href="{% url 'experimente' %}">Zu den Experimenten</a>
+</section>
+
 {% if not fehlend %}
 <div class="kennzahlen">
   <div class="kennzahl"><span class="kennzahl-wert">{{ ergebnis.n }}</span><span class="kennzahl-label">bewertete Tage</span></div>
@@ -18,6 +27,10 @@
   <div class="kennzahl gut"><span class="kennzahl-wert">{{ ziel_gut }}</span><span class="kennzahl-label">Ø {{ ziel_label }} gute Tage (oberes Drittel)</span></div>
   <div class="kennzahl schwach"><span class="kennzahl-wert">{{ ziel_schwach }}</span><span class="kennzahl-label">Ø {{ ziel_label }} schwache Tage (unteres Drittel)</span></div>
 </div>
+{% endif %}
+
+{% if jetlag_text %}
+<p class="status">Sozialer Jetlag der letzten 28 Tage: <strong>{{ jetlag_text }}</strong> (Schlafmitte an freien Tagen minus Werktagen; Werktag = Tag mit Arbeitseinträgen).</p>
 {% endif %}
 
 {% if verlauf %}
@@ -73,7 +86,7 @@
     <p class="korr-label">{{ z.label }}</p>
     <span class="korr-r">{{ z.r|floatformat:"+2" }}</span>
     {% if z.ki %}<div class="ki{% if not z.hypothese %} leise{% endif %}" role="img" aria-label="Intervall {{ z.ki_unten|floatformat:2 }} bis {{ z.ki_oben|floatformat:2 }}"><span class="ki-balken" style="left:{{ z.ki.links|safe }}%;width:{{ z.ki.breite|safe }}%"></span><span class="ki-punkt" style="left:{{ z.ki.punkt|safe }}%"></span></div>{% else %}<span></span>{% endif %}
-    <div class="korr-badges">{% if z.hypothese %}<span class="badge">Hypothese</span>{% endif %}{% if z.bh_treffer %}<span class="badge neutral">bleibt nach Mehrfachtest-Korrektur</span>{% endif %}<span class="badge neutral">{{ z.n }} Tage</span></div>
+    <div class="korr-badges">{% if z.hypothese %}<span class="badge">Hypothese</span>{% endif %}{% if z.bh_treffer %}<span class="badge neutral" title="Bleibt auch nach der Korrektur für Mehrfachtests (Benjamini-Hochberg, q = 0,1) ein Treffer.">FDR-fest</span>{% endif %}<span class="badge neutral">{{ z.n }} Tage</span></div>
   </li>
   {% empty %}
   <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
@@ -81,7 +94,7 @@
 </ul>
 <ol class="fussnoten">
   <li>Wochentagseffekte sind vorher herausgerechnet (Mittel je Wochentag abgezogen), bei Merkmal und {{ ziel_label }}.</li>
-  <li>Mehrfachtest: Bei vielen Merkmalen fällt zufällig einiges auf. Die Permutations-p-Werte werden deshalb mit Benjamini-Hochberg (q = 0,1) korrigiert; „bleibt nach Mehrfachtest-Korrektur“ heißt, der Treffer übersteht das.</li>
+  <li>Mehrfachtest: Bei vielen Merkmalen fällt zufällig einiges auf. Die Permutations-p-Werte werden deshalb mit Benjamini-Hochberg (q = 0,1) korrigiert; „FDR-fest“ heißt, der Treffer übersteht das (FDR = erwarteter Anteil falscher Treffer).</li>
   <li>Autokorrelation: Benachbarte Tage ähneln sich{% if korr.lag1 is not None %}; Lag 1 von {{ ziel_label }} ist {{ korr.lag1|floatformat:2 }}{% endif %}. Deshalb nutzt das Intervall Blöcke von 5 Tagen{% if korr.n_eff < korr.n %}, und die effektive Stichprobe ist nur etwa {{ korr.n_eff|floatformat:0 }} statt {{ korr.n }} Tage{% else %}. Effektive Stichprobe: {{ korr.n_eff|floatformat:0 }} Tage{% endif %}.</li>
   <li>Ein Zusammenhang ist keine Ursache. Prüfe eine Hypothese mit einem Experiment.</li>
 </ol>
@@ -100,6 +113,12 @@
   <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
   {% endfor %}
 </ul>
+{% endif %}
+
+{% if nachgetragen_hinweis %}
+<ol class="fussnoten" aria-label="Hinweis zur Datenqualität">
+  <li>{{ nachgetragen_prozent }} % der Einträge sind nachgetragen, also rekonstruiert statt in der Situation erfasst (Kahneman et al. 2004). Merkmale wie Pausen, Wechsel und Blocklängen sind dann ungenauer.</li>
+</ol>
 {% endif %}
 
 {% if verlauf %}

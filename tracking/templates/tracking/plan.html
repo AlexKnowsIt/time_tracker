@@ -5,6 +5,15 @@
 {% block inhalt %}
 <h1>Plan</h1>
 <p class="klein">Fläche ziehen = Block planen. Block ziehen oder Rand ziehen = verschieben oder Länge ändern. Antippen = bearbeiten. Blasse Fläche im Hintergrund = tatsächlich erfasst.</p>
+{% if faktoren %}
+<section class="karte plan-faktor" aria-labelledby="faktor-titel">
+  <h2 id="faktor-titel" class="abschnitt">Dein Plan-Faktor (letzte 28 Tage)</h2>
+  <ul class="plan-faktor-liste">
+    {% for f in faktoren %}<li>{{ f.label }}: du schaffst im Median <strong>{{ f.prozent }} %</strong> des Plans <small>({{ f.tage }} Tage mit Plan)</small></li>{% endfor %}
+  </ul>
+  <p class="klein">Pläne fallen meist zu optimistisch aus (Buehler et al. 1994). Plane deshalb mehr Zeit ein, als du für nötig hältst.</p>
+</section>
+{% endif %}
 <noscript><p class="fehler">Der Kalender braucht JavaScript. Ohne JavaScript kannst du Einträge unter „Heute“ bearbeiten.</p></noscript>
 <p id="plan-meldung" class="fehler" role="alert" hidden></p>
 <div id="kalender" class="karte kalender-karte"
@@ -21,9 +30,10 @@
     <h2 id="plan-dialog-titel">Planblock</h2>
     <p class="klein" id="plan-zeit"></p>
     <p class="fehler" id="plan-fehler" role="alert" hidden></p>
+    <p class="hinweis-realistisch" id="plan-realistisch" hidden></p>
     <div class="feld"><label for="plan-kategorie">Kategorie</label>
       <select id="plan-kategorie" required>
-        {% for k in kategorien %}<option value="{{ k.pk }}">{{ k.name }}</option>{% endfor %}
+        {% for k in kategorien %}<option value="{{ k.pk }}" data-art="{{ k.art }}">{{ k.name }}</option>{% endfor %}
       </select></div>
     <div class="feld"><label for="plan-titel">Titel (optional)</label>
       <input id="plan-titel" type="text" maxlength="100"></div>
@@ -35,6 +45,7 @@
   </form>
 </dialog>
 
+{{ faktoren_art|json_script:"plan-faktoren" }}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"
         integrity="sha384-B1OFx8Gy9GjPu8UbUyXbGQpzll9ubAUQ9agInFJ8NnD7nYG1u/CLR+Sqr5yifl4q"
         crossorigin="anonymous"></script>

@@ -1,4 +1,10 @@
 <div id="jetzt" class="jetzt" hx-target="this" hx-swap="outerHTML">
+  {% if experimenttag %}
+  <a class="experiment-banner bedingung-{{ experimenttag.bedingung|lower }}" href="{% url 'experiment_detail' experimenttag.experiment_id %}">
+    <span class="experiment-kopf">Heute im Experiment „{{ experimenttag.experiment.titel }}“: <strong>Bedingung {{ experimenttag.bedingung }}</strong></span>
+    {% if experimenttag.bedingung == "B" %}<span>{{ experimenttag.experiment.regel_satz }}</span>{% else %}<span>{{ experimenttag.experiment.bedingung_a }} – keine Regel.</span>{% endif %}
+  </a>
+  {% endif %}
   <div class="spalten">
     <div class="spalte">
       <section class="timer{% if laufend %} laeuft{% endif %}" aria-label="Laufender Eintrag"

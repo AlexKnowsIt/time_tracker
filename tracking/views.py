@@ -21,10 +21,31 @@ from .auswertung import (
     vergleich,
 )
 from .forms import BewertungForm, EintragForm, PlanblockForm, TokenForm
-from .merkmale import MERKMALE, formatiere, tagesmerkmale
-from .models import ApiToken, Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
-from .plan import plan_vs_ist
-from .services import starte_eintrag, stoppe_eintrag
+from .merkmale import (
+    ARBEIT,
+    MERKMALE,
+    formatiere,
+    letzter_kaffee_min,
+    schlafmitte,
+    sozialer_jetlag,
+    tagesmerkmale,
+)
+from .models import (
+    ApiToken,
+    Eintrag,
+    ExperimentTag,
+    Kategorie,
+    Messung,
+    Planblock,
+    Tagesbewertung,
+)
+from .plan import PLAN_FAKTOR_TAGE, plan_faktor, plan_vs_ist
+from .services import (
+    bestaetige_experimenttag,
+    laufendes_experiment,
+    starte_eintrag,
+    stoppe_eintrag,
+)
 from .zeit import dauer_text, tagesdatum, tagesgrenzen
 
 # Messungs-Knöpfe: Typ -> Menge pro Tipp
@@ -75,7 +96,15 @@ def _jetzt_kontext(nutzer):
     laufend = Eintrag.objects.filter(nutzer=nutzer, ende=None).select_related("kategorie").first()
     sekunden = max(0, int((jetzt - laufend.start).total_seconds())) if laufend else 0
     wasser_ml = summen.get(Messung.Typ.WASSER_ML, 0)
+    experimenttag = (
+        ExperimentTag.objects.filter(
+            experiment__nutzer=nutzer, experiment__status="laeuft", datum=tagesdatum(jetzt)
+        )
+        .select_related("experiment")
+        .first()
+    )
     return {
+        "experimenttag": experimenttag,
         "laufend": laufend,
         "laufend_sekunden": sekunden,
         "laufend_hms": f"{sekunden // 3600}:{sekunden % 3600 // 60:02d}:{sekunden % 60:02d}",
@@ -294,13 +323,25 @@ def abschluss_heute(request):
 @login_required
 def abschluss(request, datum):
     bewertung = Tagesbewertung.objects.filter(nutzer=request.user, datum=datum).first()
-    form = BewertungForm(request.POST or None, instance=bewertung)
+    experimenttag = (
+        ExperimentTag.objects.filter(experiment__nutzer=request.user, datum=datum)
+        .exclude(experiment__status="abgebrochen")
+        .select_related("experiment")
+        .first()
+    )
+    form = BewertungForm(request.POST or None, instance=bewertung, experimenttag=experimenttag)
     if request.method == "POST" and form.is_valid():
         gespeichert = form.save(commit=False)
         gespeichert.nutzer, gespeichert.datum = request.user, datum
         gespeichert.save()
+        if experimenttag and form.cleaned_data.get("eingehalten") is not None:
+            bestaetige_experimenttag(request.user, datum, form.cleaned_data["eingehalten"])
         return redirect("tag", datum=datum)
-    return render(request, "tracking/abschluss.html", {"form": form, "datum": datum})
+    return render(
+        request,
+        "tracking/abschluss.html",
+        {"form": form, "datum": datum, "experimenttag": experimenttag},
+    )
 
 
 @login_required
@@ -408,6 +449,7 @@ def woche(request, datum=None):
 ZIELGROESSEN = {
     "produktivitaet": "Produktivität",
     "zufriedenheit": "Zufriedenheit",
+    "schlaf_h": "Schlaf",
 }
 MUSTER_TAGE = 180
 
@@ -420,6 +462,8 @@ BEWERTUNG_FELDER = (
     "fortschritt_notiz",
     "abgeschaltet",
     "schlaf_h",
+    "bettzeit",
+    "aufstehzeit",
     "notiz",
 )
 SCHLAF_FENSTER = 7  # Nächte (inklusive heute) für schlaf_schnitt_7
@@ -429,25 +473,31 @@ MUSTER_SEED = 42  # fester Seed: dieselben Daten ergeben dieselbe Seite
 
 def _bewertungen(nutzer, von, bis):
     """Bewertungen von..bis plus 6 Tage davor (für den Schlafschnitt) als dict nach Datum."""
-    return {
-        b["datum"]: b
-        for b in Tagesbewertung.objects.filter(
-            nutzer=nutzer, datum__range=(von - timedelta(days=SCHLAF_FENSTER - 1), bis)
-        ).values(*BEWERTUNG_FELDER)
-    }
+    ergebnis = {}
+    for b in Tagesbewertung.objects.filter(
+        nutzer=nutzer, datum__range=(von - timedelta(days=SCHLAF_FENSTER - 1), bis)
+    ).values(*BEWERTUNG_FELDER):
+        if b["schlaf_h"] is not None:  # Decimal -> float, damit die Statistik rechnen kann
+            b["schlaf_h"] = float(b["schlaf_h"])
+        ergebnis[b["datum"]] = b
+    return ergebnis
 
 
 def _tage_mit_merkmalen(nutzer, datumsliste, bewertungen, jetzt):
     """[(bewertung, merkmale)] zu den Tagen (aufsteigend), inklusive Kontext aus Vortagen."""
-    eintraege, messungen = _nach_tagen(nutzer, datumsliste[0], datumsliste[-1])
+    # ein Tag mehr vorne: der Kaffee des Vortags gehört zur Nacht des ersten Tages
+    eintraege, messungen = _nach_tagen(nutzer, datumsliste[0] - timedelta(days=1), datumsliste[-1])
     tage = []
     for d in datumsliste:
         m = tagesmerkmale(eintraege.get(d, []), messungen.get(d, []), jetzt)
         b = bewertungen[d]
         m["wochentag"] = d.weekday()
-        m["schlaf_h"] = float(b["schlaf_h"]) if b["schlaf_h"] is not None else None
+        m["schlaf_h"] = b["schlaf_h"]
+        m["schlafmitte"] = schlafmitte(b["bettzeit"], b["aufstehzeit"])
+        vortag_d = d - timedelta(days=1)
+        m["letzter_kaffee_vortag"] = letzter_kaffee_min(messungen.get(vortag_d, []), vortag_d)
         schlaf = [
-            float(bewertungen[x]["schlaf_h"])
+            bewertungen[x]["schlaf_h"]
             for x in (d - timedelta(days=j) for j in range(SCHLAF_FENSTER))
             if x in bewertungen and bewertungen[x]["schlaf_h"] is not None
         ]
@@ -460,12 +510,56 @@ def _tage_mit_merkmalen(nutzer, datumsliste, bewertungen, jetzt):
     return tage
 
 
+JETLAG_TAGE = 28
+NACHGETRAGEN_HINWEIS_AB = 0.5
+
+
+def _nachgetragen(nutzer, von, bis):
+    """Anteil nachgetragener Einträge im Zeitraum; Hinweis ab mehr als 50 % (rekonstruiert)."""
+    summen = Eintrag.objects.filter(
+        nutzer=nutzer, start__gte=tagesgrenzen(von)[0], start__lt=tagesgrenzen(bis)[1]
+    ).aggregate(alle=Count("pk"), nachgetragen=Count("pk", filter=Q(nachgetragen=True)))
+    anteil = summen["nachgetragen"] / summen["alle"] if summen["alle"] else None
+    return {
+        "anteil_nachgetragen": anteil,
+        "nachgetragen_hinweis": anteil is not None and anteil > NACHGETRAGEN_HINWEIS_AB,
+    }
+
+
+def _sozialer_jetlag(nutzer, heute):
+    """Sozialer Jetlag der letzten 28 Tage in Minuten (None, wenn zu wenig Nächte mit Zeiten).
+
+    Werktag = Tag mit Arbeitseinträgen, freier Tag = bewerteter Tag ohne. Schlafmitte aus
+    Bett- und Aufstehzeit der Bewertung.
+    """
+    von = heute - timedelta(days=JETLAG_TAGE - 1)
+    mitten = {
+        b.datum: schlafmitte(b.bettzeit, b.aufstehzeit)
+        for b in Tagesbewertung.objects.filter(
+            nutzer=nutzer,
+            datum__range=(von, heute),
+            bettzeit__isnull=False,
+            aufstehzeit__isnull=False,
+        )
+    }
+    if not mitten:
+        return None
+    eintraege, _ = _nach_tagen(nutzer, min(mitten), max(mitten))
+    return sozialer_jetlag(
+        [
+            (any(e.kategorie.art in ARBEIT for e in eintraege.get(d, [])), mitte)
+            for d, mitte in mitten.items()
+        ]
+    )
+
+
 def _muster_kontext(nutzer, ziel, jetzt):
     """Auswertung für die Muster-Seite und die API; ``ziel`` muss in ZIELGROESSEN sein."""
     heute = tagesdatum(jetzt)
     von = heute - timedelta(days=MUSTER_TAGE - 1)
     bewertungen = _bewertungen(nutzer, von, heute)
-    bewertete = sorted(d for d in bewertungen if d >= von)
+    # Zielgröße muss vorhanden sein (Schlaf ist optional)
+    bewertete = sorted(d for d in bewertungen if d >= von and bewertungen[d][ziel] is not None)
     kontext = {
         "ziel": ziel,
         "ziel_label": ZIELGROESSEN[ziel],
@@ -480,6 +574,13 @@ def _muster_kontext(nutzer, ziel, jetzt):
         kontext["modell_fehlend"] = MIN_TAGE_MODELL - len(bewertete)
     if len(bewertete) < MIN_TAGE_KORRELATION:
         kontext["korr_fehlend"] = MIN_TAGE_KORRELATION - len(bewertete)
+    kontext["sozialer_jetlag"] = _sozialer_jetlag(nutzer, heute)
+    if kontext["sozialer_jetlag"] is not None:
+        minuten = kontext["sozialer_jetlag"]
+        kontext["jetlag_text"] = ("+" if minuten >= 0 else "−") + dauer_text(abs(minuten) * 60)
+    kontext.update(_nachgetragen(nutzer, von, heute))
+    if kontext["anteil_nachgetragen"] is not None:
+        kontext["nachgetragen_prozent"] = round(kontext["anteil_nachgetragen"] * 100)
     if len(bewertete) < MIN_TAGE:
         kontext["fehlend"] = MIN_TAGE - len(bewertete)
         return kontext
@@ -534,6 +635,7 @@ def muster(request):
         for k in modell["koeffizienten"]:
             k["breite"] = round(abs(k["koeff"]) * 100 / maximum)
     kontext["verlauf"] = _verlauf(request.user, jetzt)
+    kontext["experiment"] = laufendes_experiment(request.user, tagesdatum(jetzt))
     return render(request, "tracking/muster.html", kontext)
 
 
@@ -643,6 +745,7 @@ def export_eintraege(request):
         "notiz",
         "abgeschlossen",
         "unterbrochen",
+        "nachgetragen",
     ]
 
     def zeilen():
@@ -663,6 +766,7 @@ def export_eintraege(request):
                 e.notiz,
                 e.abgeschlossen,
                 e.unterbrochen,
+                e.nachgetragen,
             ]
 
     return _csv_antwort("eintraege.csv", kopf, zeilen())
@@ -713,6 +817,19 @@ def _fehler(form):
     return JsonResponse({"fehler": " ".join(texte) or "Ungültige Eingabe."}, status=400)
 
 
+def _plan_faktor(nutzer, jetzt):
+    """Plan-Faktor je Kategorie-Art (Buehler et al. 1994), mit Prozentwert für die Anzeige."""
+    heute = tagesdatum(jetzt)
+    von = heute - timedelta(days=PLAN_FAKTOR_TAGE)
+    beginn, ende = tagesgrenzen(von)[0], tagesgrenzen(heute)[0]  # bis einschließlich gestern
+    faktoren = plan_faktor(
+        _planbloecke(nutzer, beginn, ende),
+        _eintraege_im_zeitraum(nutzer, beginn, ende),
+        heute,
+    )
+    return [{**f, "prozent": round(f["faktor"] * 100)} for f in faktoren]
+
+
 @login_required
 def plan(request):
     if "datum" in request.GET:
@@ -723,7 +840,17 @@ def plan(request):
     else:
         datum = tagesdatum(timezone.now())
     kategorien = Kategorie.objects.filter(nutzer=request.user, aktiv=True)
-    return render(request, "tracking/plan.html", {"datum": datum, "kategorien": kategorien})
+    faktoren = _plan_faktor(request.user, timezone.now())
+    return render(
+        request,
+        "tracking/plan.html",
+        {
+            "datum": datum,
+            "kategorien": kategorien,
+            "faktoren": faktoren,
+            "faktoren_art": {f["art"]: f["faktor"] for f in faktoren},
+        },
+    )
 
 
 @login_required

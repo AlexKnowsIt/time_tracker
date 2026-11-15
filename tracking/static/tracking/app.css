@@ -450,3 +450,39 @@ dialog h2 { font-size: 1.25rem; }
 .modell-balken { grid-column: 1 / -1; height: 6px; border-radius: var(--r-voll); background: var(--akzent); }
 .modell-balken.minus { background: var(--schwach); }
 .modell-wert { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Experimente ---------- */
+.nur-seitenleiste { display: none !important; }
+@media (min-width: 900px) { .tabs a.nur-seitenleiste { display: flex !important; } }
+.experiment-hinweis { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.experiment-hinweis p { margin: 0; flex: 1 1 16rem; }
+.experiment-banner { display: flex; flex-direction: column; gap: 2px; margin: var(--s3) 0 var(--s2); padding: var(--s3) var(--s4); border-radius: var(--r-l); border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); text-decoration: none; font-size: .9375rem; line-height: 1.4; box-shadow: var(--schatten); }
+.experiment-banner.bedingung-b { border-color: var(--akzent); background: var(--akzent-weich); }
+.experiment-banner .experiment-kopf { color: var(--text-2); font-size: .8125rem; }
+.experiment-banner .experiment-kopf strong { color: var(--text); }
+.vorlagen { list-style: none; padding: 0; margin: 0 0 var(--s4); display: grid; gap: var(--s3); }
+@media (min-width: 700px) { .vorlagen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vorlage { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); margin: 0; }
+.vorlage h3, .karte h3 { font-size: 1.0625rem; margin: 0; }
+.vorlage .btn { margin-top: auto; }
+.vorlage .klein { margin: 0; }
+.regel { font-weight: 600; margin: var(--s1) 0 var(--s2); overflow-wrap: anywhere; }
+.btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+.fortschritt { height: 8px; border-radius: var(--r-voll); background: var(--flaeche-2); overflow: hidden; margin: var(--s2) 0; }
+.fortschritt span { display: block; height: 100%; background: var(--akzent); border-radius: var(--r-voll); }
+.ergebnis-text { font-weight: 600; margin: 0 0 var(--s3); }
+.ergebnis-werte { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); margin: 0 0 var(--s2); }
+.ergebnis-werte div { min-width: 0; }
+.ergebnis-werte dt { font-size: .75rem; color: var(--text-2); }
+.ergebnis-werte dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ergebnis-werte dd small { font-weight: 500; }
+.ergebnis-details { padding-left: var(--s4); margin: var(--s2) 0 0; }
+.ergebnis.aussage-dafuer .ergebnis-text { color: var(--gut); }
+.wenn-dann .satz { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s2); }
+.wenn-dann .satz label { margin: 0; flex: none; min-width: 3.5rem; }
+.satz-wort { font-weight: 700; color: var(--akzent); }
+.markierungen span + span::before { content: " · "; }
+/* Plan-Faktor */
+.plan-faktor { margin-top: 0; }
+.plan-faktor-liste { margin: 0 0 var(--s2); padding-left: var(--s5); }
+.hinweis-realistisch { margin: 0 0 var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-m); background: var(--akzent-weich); color: var(--text); font-size: .875rem; font-weight: 600; }

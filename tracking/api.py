@@ -18,20 +18,41 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 
-from .forms import BewertungForm, EintragForm, PlanblockForm
+from . import experimente
+from .experiment_views import (
+    design_text,
+    ergebnis_anzeige,
+    experiment_ergebnis,
+    experiment_werte,
+    fortschritt,
+    vorlagen_liste,
+)
+from .forms import BewertungForm, EintragForm, ExperimentForm, PlanblockForm
 from .merkmale import MERKMALE, formatiere, tagesmerkmale
-from .models import ApiToken, Kategorie, Messung, Planblock, Tagesbewertung
+from .models import ApiToken, Experiment, Kategorie, Messung, Planblock, Tagesbewertung
 from .plan import plan_vs_ist
-from .services import starte_eintrag, stoppe_eintrag
+from .services import (
+    beende_abgelaufene_experimente,
+    bestaetige_experimenttag,
+    starte_eintrag,
+    starte_experiment,
+    stoppe_eintrag,
+)
 from .views import (
     MESSUNG_KNOEPFE,
+    MUSTER_TAGE,
     PLAN_MAX_TAGE,
     ZIELGROESSEN,
+    _bewertungen,
     _eintraege_im_zeitraum,
     _jetzt_kontext,
     _muster_kontext,
     _nach_tagen,
+    _nachgetragen,
+    _plan_faktor,
     _planbloecke,
+    _sozialer_jetlag,
+    _tage_mit_merkmalen,
     _woche_daten,
 )
 from .zeit import tagesdatum, tagesgrenzen
@@ -144,6 +165,7 @@ def _eintrag(e, jetzt):
         "notiz": e.notiz,
         "abgeschlossen": e.abgeschlossen,
         "unterbrochen": e.unterbrochen,
+        "nachgetragen": e.nachgetragen,
     }
 
 
@@ -162,6 +184,8 @@ def _bewertung(b):
         "fortschritt_notiz": b.fortschritt_notiz,
         "abgeschaltet": b.abgeschaltet,
         "schlaf_h": float(b.schlaf_h) if b.schlaf_h is not None else None,
+        "bettzeit": b.bettzeit.strftime("%H:%M") if b.bettzeit else None,
+        "aufstehzeit": b.aufstehzeit.strftime("%H:%M") if b.aufstehzeit else None,
         "notiz": b.notiz,
     }
 
@@ -382,7 +406,18 @@ def muster(request):
         text = f"ziel muss einer von {', '.join(ZIELGROESSEN)} sein."
         raise ApiFehler(400, text, {"ziel": [text]})
     k = _muster_kontext(request.user, ziel, timezone.now())
-    antwort = {"ziel": ziel, "min_tage": k["min_tage"], "tage_max": k["tage_max"]}
+    antwort = {
+        "ziel": ziel,
+        "min_tage": k["min_tage"],
+        "tage_max": k["tage_max"],
+        "sozialer_jetlag_min": _runde(k["sozialer_jetlag"], 0),
+        "anteil_nachgetragen": _runde(k["anteil_nachgetragen"]),
+    }
+    if k["nachgetragen_hinweis"]:
+        antwort["nachgetragen_hinweis"] = (
+            "Mehr als die Hälfte der Einträge ist nachgetragen, also rekonstruiert "
+            "(Kahneman et al. 2004): Merkmale wie Pausen und Wechsel sind dann ungenauer."
+        )
     if "fehlend" in k:
         antwort.update(
             bewertete_tage=k["bewertet"],
@@ -475,13 +510,323 @@ def plan(request):
         text = f"ende muss nach start liegen, höchstens {PLAN_MAX_TAGE} Tage Abstand."
         raise ApiFehler(400, text, {"ende": [text]})
     bloecke = _planbloecke(request.user, von, bis)
-    return JsonResponse({"planbloecke": [_planblock(b) for b in bloecke]})
+    return JsonResponse(
+        {
+            "planbloecke": [_planblock(b) for b in bloecke],
+            "plan_faktor": [
+                {
+                    "art": f["art"],
+                    "label": f["label"],
+                    "faktor": round(f["faktor"], 2),
+                    "tage": f["tage"],
+                    "text": f"{f['label']}: du schaffst im Median {f['prozent']} % des Plans "
+                    f"({f['tage']} Tage mit Plan). Plane entsprechend mehr Zeit ein.",
+                }
+                for f in _plan_faktor(request.user, timezone.now())
+            ],
+        }
+    )
 
 
 @api("DELETE")
 def plan_loeschen(request, pk):
     get_object_or_404(Planblock, pk=pk, nutzer=request.user).delete()
     return JsonResponse({"ok": True})
+
+
+# --- Selbstexperimente -----------------------------------------------------------------
+
+
+def _experiment_json(e, heute):
+    tage = list(e.tage.all())
+    heute_tag = next((t for t in tage if t.datum == heute), None)
+    antworten = [t for t in tage if t.datum <= heute and t.eingehalten is not None]
+    return {
+        "id": e.pk,
+        "titel": e.titel,
+        "hypothese": e.hypothese,
+        "regel": e.regel_satz,
+        "bedingung_a": e.bedingung_a,
+        "design": e.design,
+        "design_text": design_text(e.design, e.blocklaenge, e.dauer_tage),
+        "zielgroesse": e.zielgroesse,
+        "ziel_label": experimente.ZIELE[e.zielgroesse][0],
+        "start": str(e.start),
+        "ende": str(e.ende),
+        "status": e.status,
+        "abbruch_vermerk": e.abbruch_vermerk,
+        "fortschritt": fortschritt(e, heute),
+        "heute": {
+            "datum": str(heute),
+            "bedingung": heute_tag.bedingung,
+            "vorgabe": e.regel_satz if heute_tag.bedingung == "B" else e.bedingung_a,
+            "eingehalten": heute_tag.eingehalten,
+        }
+        if heute_tag
+        else None,
+        "einhaltung": {
+            "antworten": len(antworten),
+            "ja": sum(1 for t in antworten if t.eingehalten),
+        },
+        # Zuweisung steht vorab fest; Ergebnisse folgen erst nach dem Ende (siehe "beendete")
+        "tage": [
+            {"datum": str(t.datum), "bedingung": t.bedingung, "eingehalten": t.eingehalten}
+            for t in tage
+        ],
+    }
+
+
+def _ergebnis_json(erg):
+    a = erg
+    return {
+        "aussage": a["aussage"],
+        "text": a["text"],
+        "tage_a": a["n_a"],
+        "tage_b": a["n_b"],
+        "median_a": _runde(a["median_a"]),
+        "median_b": _runde(a["median_b"]),
+        "differenz_b_minus_a": _runde(a["differenz"]),
+        "p": _runde(a["p"], 3),
+        "verfahren": a["verfahren"],
+        "cliffs_delta": _runde(a["delta"]),
+        "delta_ki": [_runde(a["delta_ki"][0]), _runde(a["delta_ki"][1])],
+        "einhaltung_b_prozent": a["einhaltung_b_prozent"],
+        "nur_eingehaltene_tage": a["protokoll_text"],
+    }
+
+
+@api("GET", "POST")
+def experiment(request):
+    jetzt_ = timezone.now()
+    heute = tagesdatum(jetzt_)
+    beende_abgelaufene_experimente(request.user, heute)
+    if request.method == "POST":
+        return _experiment_starten(request, heute)
+    alle = list(Experiment.objects.filter(nutzer=request.user).prefetch_related("tage"))
+    laufend = next((e for e in alle if e.status == Experiment.Status.LAEUFT), None)
+    beendete = [e for e in alle if e.status == Experiment.Status.BEENDET]
+    werte = experiment_werte(request.user, beendete, jetzt_)
+    return JsonResponse(
+        {
+            "laufend": _experiment_json(laufend, heute) if laufend else None,
+            "beendete": [
+                {
+                    "id": e.pk,
+                    "titel": e.titel,
+                    "regel": e.regel_satz,
+                    "ziel_label": experimente.ZIELE[e.zielgroesse][0],
+                    "ergebnis": _ergebnis_json(
+                        ergebnis_anzeige(experiment_ergebnis(e, werte[e.pk]), e.zielgroesse)
+                    ),
+                }
+                for e in beendete
+            ],
+            "vorlagen": [
+                {k: v[k] for k in ("key", "titel", "regel", "design_text", "ziel_label", "hinweis")}
+                for v in vorlagen_liste()
+            ],
+            "hinweis": "Ergebnisse erscheinen erst nach dem Ende des Experiments; die Zuordnung "
+            "zu A oder B steht vorab fest. Starten: POST mit vorlage oder eigenen Feldern.",
+        }
+    )
+
+
+def _experiment_starten(request, heute):
+    daten = {}
+    vorlage_key = request.json.get("vorlage")
+    if vorlage_key:
+        v = experimente.VORLAGEN.get(vorlage_key)
+        if v is None:
+            text = f"Unbekannte Vorlage. Möglich: {', '.join(experimente.VORLAGEN)}."
+            raise ApiFehler(400, text, {"vorlage": [text]})
+        daten = {
+            "titel": v["titel"],
+            "hypothese": v["hypothese"],
+            "regel_wenn": v["wenn"],
+            "regel_dann": v["dann"],
+            "design": v["design"],
+            "blocklaenge": v["blocklaenge"],
+            "dauer_tage": v["dauer"],
+            "zielgroesse": v["ziel"],
+        }
+    daten["start"] = str(heute)
+    for feld, wert in request.json.items():
+        if feld == "vorlage" or wert is None:
+            continue
+        if isinstance(wert, dict | list):
+            text = f"Feld „{feld}“ muss Text oder Zahl sein."
+            raise ApiFehler(400, text, {feld: [text]})
+        daten[feld] = str(wert)
+    form = ExperimentForm(daten, nutzer=request.user)
+    if not form.is_valid():
+        raise _form_fehler(form)
+    c = form.cleaned_data
+    try:
+        e = starte_experiment(
+            request.user,
+            **{
+                k: c[k]
+                for k in (
+                    "titel",
+                    "hypothese",
+                    "regel_wenn",
+                    "regel_dann",
+                    "bedingung_a",
+                    "design",
+                    "blocklaenge",
+                    "dauer_tage",
+                    "zielgroesse",
+                    "start",
+                )
+            },
+        )
+    except ValueError as fehler:
+        raise ApiFehler(409, str(fehler)) from None
+    return JsonResponse({"experiment": _experiment_json(e, heute)}, status=201)
+
+
+@api("POST")
+def experiment_tag(request, datum):
+    eingehalten = request.json.get("eingehalten")
+    if not isinstance(eingehalten, bool):
+        text = "eingehalten muss true oder false sein."
+        raise ApiFehler(400, text, {"eingehalten": [text]})
+    tag = bestaetige_experimenttag(request.user, datum, eingehalten)
+    if tag is None:
+        raise ApiFehler(404, "An diesem Datum gibt es keinen Experimenttag.")
+    return JsonResponse(
+        {"datum": str(tag.datum), "bedingung": tag.bedingung, "eingehalten": tag.eingehalten}
+    )
+
+
+WOCHE_MERKMALE = (
+    "deepwork_min",
+    "erfasst_min",
+    "beginn",
+    "ende",
+    "laengster_deepwork_min",
+    "wechsel_pro_h",
+    "pausen_anzahl",
+    "pausen_min",
+    "wasser_ml",
+    "letzter_kaffee",
+    "anteil_nachgetragen",
+)
+WOCHE_VERGLEICH_TAGE = 28
+
+
+def _muster_kompakt(nutzer, ziel, jetzt):
+    """Die wichtigsten Muster-Hinweise einer Zielgröße für den Wochenbericht."""
+    k = _muster_kontext(nutzer, ziel, jetzt)
+    if "fehlend" in k:
+        return {
+            "ziel": ziel,
+            "hinweis": f"Noch {k['fehlend']} bewertete Tage bis zur ersten Auswertung.",
+        }
+    e = k["ergebnis"]
+    korr = k.get("korr")
+    return {
+        "ziel": ziel,
+        "bewertete_tage": e["n"],
+        "gute_gegen_schwache_tage": [
+            {
+                "merkmal": z["label"],
+                "gute_tage": z["gut_text"],
+                "schwache_tage": z["schwach_text"],
+                "delta": _runde(z["delta"]),
+                "deutlich": z["deutlich"],
+            }
+            for z in e["zeilen"][:4]
+        ],
+        "korrelationen": [
+            {"merkmal": z["label"], "r": _runde(z["r"]), "fdr_fest": z["bh_treffer"], "n": z["n"]}
+            for z in (korr["zeilen"] if korr else [])
+            if z["hypothese"]
+        ][:4],
+    }
+
+
+@api("GET")
+def wochenbericht(request, datum):
+    """Alles, was ein Sprachmodell für einen vorsichtigen Wochenrückblick braucht, kompakt."""
+    jetzt_ = timezone.now()
+    heute = tagesdatum(jetzt_)
+    beende_abgelaufene_experimente(request.user, heute)
+    montag, sonntag, tage = _woche_daten(request.user, datum, jetzt_)
+    bewertete = [t["datum"] for t in tage if t["bewertung"]]
+    merkmale = {}
+    if bewertete:
+        bewertungen = _bewertungen(request.user, montag, sonntag)
+        for b, m in _tage_mit_merkmalen(request.user, bewertete, bewertungen, jetzt_):
+            merkmale[b["datum"]] = {
+                k: formatiere(m[k], f)
+                for k, _, f in MERKMALE
+                if k in WOCHE_MERKMALE and m.get(k) is not None
+            }
+    davor = Tagesbewertung.objects.filter(
+        nutzer=request.user,
+        datum__range=(montag - timedelta(days=WOCHE_VERGLEICH_TAGE), montag - timedelta(days=1)),
+    )
+
+    def schnitt(werte):
+        werte = list(werte)
+        return round(sum(werte) / len(werte), 1) if werte else None
+
+    experiment_ = (
+        Experiment.objects.filter(nutzer=request.user, status=Experiment.Status.LAEUFT)
+        .prefetch_related("tage")
+        .first()
+    )
+    woche_tage = []
+    for t in tage:
+        b = t["bewertung"]
+        woche_tage.append(
+            {
+                "datum": str(t["datum"]),
+                "wochentag": t["datum"].strftime("%A"),
+                "bewertet": b is not None,
+                **(
+                    {
+                        "produktivitaet": b.produktivitaet,
+                        "zufriedenheit": b.zufriedenheit,
+                        "fortschritt": b.fortschritt,
+                        "fortschritt_notiz": b.fortschritt_notiz,
+                        "abgeschaltet": b.abgeschaltet,
+                        "schlaf_h": float(b.schlaf_h) if b.schlaf_h is not None else None,
+                        "notiz": b.notiz,
+                        "merkmale": merkmale.get(t["datum"], {}),
+                    }
+                    if b
+                    else {}
+                ),
+            }
+        )
+    muster = [_muster_kompakt(request.user, z, jetzt_) for z in ("produktivitaet", "zufriedenheit")]
+    nachgetragen = _nachgetragen(request.user, heute - timedelta(days=MUSTER_TAGE - 1), heute)
+    return JsonResponse(
+        {
+            "woche": {"von": str(montag), "bis": str(sonntag), "tage": woche_tage},
+            "vergleich_vorherige_4_wochen": {
+                "produktivitaet_schnitt": schnitt(b.produktivitaet for b in davor),
+                "zufriedenheit_schnitt": schnitt(b.zufriedenheit for b in davor),
+                "bewertete_tage": len(davor),
+            },
+            "muster_hinweise": muster,
+            "plan_faktor": [
+                {"art": f["label"], "prozent_des_plans_im_median": f["prozent"], "tage": f["tage"]}
+                for f in _plan_faktor(request.user, jetzt_)
+            ],
+            "sozialer_jetlag_min": _runde(_sozialer_jetlag(request.user, heute), 0),
+            "anteil_nachgetragen": _runde(nachgetragen["anteil_nachgetragen"]),
+            "laufendes_experiment": _experiment_json(experiment_, heute) if experiment_ else None,
+            "experiment_vorlagen": [
+                {k: v[k] for k in ("key", "titel", "regel", "design_text", "ziel_label", "hinweis")}
+                for v in vorlagen_liste()
+            ],
+            "hinweis": "Muster sind Unterschiede und Zusammenhänge, keine Ursachen. Nur die "
+            "Experimente können kausale Hinweise liefern.",
+        }
+    )
 
 
 @csrf_exempt

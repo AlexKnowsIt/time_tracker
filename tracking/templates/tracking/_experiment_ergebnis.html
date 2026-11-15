@@ -1,0 +1,17 @@
+<div class="ergebnis aussage-{{ e.aussage }}">
+  <p class="ergebnis-text">{{ e.text }}</p>
+  <dl class="ergebnis-werte">
+    <div><dt>Median A (wie immer)</dt><dd>{{ e.median_a_text }} <small>{{ e.n_a }} Tage</small></dd></div>
+    <div><dt>Median B (Regel)</dt><dd>{{ e.median_b_text }} <small>{{ e.n_b }} Tage</small></dd></div>
+    <div><dt>Differenz B − A</dt><dd>{{ e.differenz_text }}</dd></div>
+    <div><dt>Einhaltung B</dt><dd>{% if e.einhaltung_b_prozent is not None %}{{ e.einhaltung_b_prozent }} % <small>{{ e.einhaltung_b_n }} Antworten</small>{% else %}–{% endif %}</dd></div>
+  </dl>
+  {% if not kompakt %}
+  <ul class="klein ergebnis-details">
+    {% if e.p_text %}<li>Randomisierungstest ({{ e.verfahren }}): p {% if e.p_text|slice:":1" == "<" %}{{ e.p_text }}{% else %}= {{ e.p_text }}{% endif %}. Zweiseitig, Teststatistik: Mediandifferenz.</li>{% endif %}
+    {% if e.delta is not None %}<li>Cliff's Delta (B gegen A): {{ e.delta|floatformat:2 }}, 95-%-Intervall {{ e.delta_ki.0|floatformat:2 }} bis {{ e.delta_ki.1|floatformat:2 }}.</li>{% endif %}
+    <li>Primär nach Zuweisung ausgewertet (alle Tage zählen zur zugewiesenen Bedingung, egal ob eingehalten).</li>
+    {% if e.protokoll_text and e.nicht_eingehalten %}<li>Nebenergebnis ohne Tage mit „nicht eingehalten“ (nur beschreibend, ohne p): {{ e.protokoll_text }}.</li>{% endif %}
+  </ul>
+  {% endif %}
+</div>

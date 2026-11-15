@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
+from .models import Eintrag, Experiment, Kategorie, Messung, Planblock, Tagesbewertung
 
 
 @admin.register(Kategorie)
@@ -44,3 +44,17 @@ class PlanblockAdmin(admin.ModelAdmin):
     list_display = ["kategorie", "titel", "start", "ende", "nutzer"]
     list_filter = ["nutzer", "kategorie__art"]
     date_hierarchy = "start"
+
+
+@admin.register(Experiment)
+class ExperimentAdmin(admin.ModelAdmin):
+    """Nur ansehen: Gestartete Experimente sind schreibgeschützt (Zuweisung, Hypothese ...)."""
+
+    list_display = ["titel", "nutzer", "design", "zielgroesse", "start", "status"]
+    list_filter = ["status", "nutzer"]
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request):
+        return False

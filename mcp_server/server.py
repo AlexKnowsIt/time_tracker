@@ -144,7 +144,8 @@ def eintrag_nachtragen(
     `kategorie`: Name oder id. `start` und `ende`: ISO 8601, z. B. 2026-11-14T09:30:00+01:00
     (ohne Zeitzone gilt die der App). Das Ende muss nach dem Start liegen. Einträge dürfen
     sich nicht überschneiden: bei Überschneidung kommt ein Fehlertext mit dem Konflikt, dann
-    die Zeiten anpassen. Optional: `abgeschlossen` (Aufgabe abgeschlossen? nur angeben, wenn
+    die Zeiten anpassen. Nachgetragene Einträge gelten als rekonstruiert (Kennzeichen
+    "nachgetragen"). Optional: `abgeschlossen` (Aufgabe abgeschlossen? nur angeben, wenn
     der Nutzer es sagt) und `unterbrochen` (Block wurde unterbrochen). Gibt den neuen Eintrag
     als JSON zurück."""
     daten = {
@@ -178,14 +179,17 @@ def tag_bewerten(
     notiz: str = "",
     fortschritt_notiz: str = "",
     abgeschaltet: int | None = None,
+    bettzeit: str | None = None,
+    aufstehzeit: str | None = None,
 ) -> str:
     """Speichert die Tagesbewertung (JJJJ-MM-TT) oder ersetzt eine vorhandene vollständig.
     `produktivitaet` ("Wie produktiv war der Tag?") und `zufriedenheit` ("Wie zufrieden bist
     du mit dem Tag?") sind ganze Zahlen von 1 bis 10, `fortschritt` ("Hast du heute bei etwas
     Wichtigem Fortschritt gemacht?") ist ja/nein. Alle drei muss der Nutzer selbst nennen,
     nie schätzen. Optional: `fortschritt_notiz` (was genau), `abgeschaltet` ("Wie gut konntest
-    du nach der Arbeit abschalten?", 1 bis 5), `schlaf_h` (Stunden), `notiz` (was hat geholfen,
-    was gestört). Gibt die gespeicherte Bewertung zurück."""
+    du nach der Arbeit abschalten?", 1 bis 5), `schlaf_h` (Stunden), `bettzeit` (letzte Nacht)
+    und `aufstehzeit` (heute) als HH:MM (daraus wird `schlaf_h` berechnet, falls leer), `notiz`
+    (was hat geholfen, was gestört). Gibt die gespeicherte Bewertung zurück."""
     daten = {
         "produktivitaet": produktivitaet,
         "zufriedenheit": zufriedenheit,
@@ -197,6 +201,10 @@ def tag_bewerten(
         daten["schlaf_h"] = schlaf_h
     if abgeschaltet is not None:
         daten["abgeschaltet"] = abgeschaltet
+    if bettzeit:
+        daten["bettzeit"] = bettzeit
+    if aufstehzeit:
+        daten["aufstehzeit"] = aufstehzeit
     return _aufruf("POST", f"tag/{quote(datum, safe='')}/bewertung", daten)
 
 
@@ -209,15 +217,20 @@ def woche_abrufen(datum: str) -> str:
 
 
 @mcp.tool()
-def muster_abrufen(ziel: Literal["produktivitaet", "zufriedenheit"] = "produktivitaet") -> str:
-    """Wertet die letzten 180 Tage nach der Zielgröße `ziel` aus, in drei Stufen: (1) gute
+def muster_abrufen(
+    ziel: Literal["produktivitaet", "zufriedenheit", "schlaf_h"] = "produktivitaet",
+) -> str:
+    """Wertet die letzten 180 Tage nach der Zielgröße `ziel` aus (Produktivität, Zufriedenheit
+    oder Schlaf in Stunden), in drei Stufen: (1) gute
     gegen schwache Tage (oberes gegen unteres Drittel; je Merkmal Mittelwerte, Cliff's Delta
     mit Intervall und "deutlich"), erst ab 14 bewerteten Tagen; (2) "korrelationen"
     (Spearman, wochentagsbereinigt, Intervall, Mehrfachtest-Treffer, Autokorrelation), ab 30
     Tagen; (3) "mehrfachmodell" (die fünf stärksten Merkmale einer gemeinsamen Regression),
     ab 90 Tagen. Ist eine Stufe noch nicht erreicht, steht dort, wie viele Tage fehlen.
-    Das sind Unterschiede und Zusammenhänge, keine Ursachen: als Hypothesen formulieren,
-    Ursachen prüft man mit Experimenten."""
+    Dazu "sozialer_jetlag_min" (Schlafmitte freier Tage minus Werktage, 28 Tage) und
+    "anteil_nachgetragen" (Anteil rekonstruierter Einträge). Das sind Unterschiede und
+    Zusammenhänge, keine Ursachen: als Hypothesen formulieren, Ursachen prüft man mit
+    Experimenten."""
     return _aufruf("GET", "muster", abfrage={"ziel": ziel})
 
 
@@ -225,7 +238,9 @@ def muster_abrufen(ziel: Literal["produktivitaet", "zufriedenheit"] = "produktiv
 def plan_abrufen(start: str, ende: str) -> str:
     """Listet geplante Zeitblöcke im Zeitraum (höchstens 62 Tage). `start` und `ende` sind
     Daten (JJJJ-MM-TT, Ende einschließlich) oder ISO-8601-Zeitpunkte. Gibt je Block id,
-    Kategorie, Zeiten und Titel zurück."""
+    Kategorie, Zeiten und Titel zurück, dazu "plan_faktor": je Kategorie-Art, wie viel Prozent
+    des Plans der Nutzer im Median der letzten 28 Tage schafft (Planning Fallacy). Beim Planen
+    Dauern mit diesem Faktor großzügiger ansetzen."""
     return _aufruf("GET", "plan", abfrage={"start": start, "ende": ende})
 
 
@@ -247,6 +262,112 @@ def planblock_loeschen(id: int) -> str:
     """Löscht einen Planblock anhand seiner id (siehe plan_abrufen). Nur auf ausdrücklichen
     Wunsch des Nutzers benutzen; das Löschen lässt sich nicht rückgängig machen."""
     return _aufruf("DELETE", f"plan/{int(id)}")
+
+
+@mcp.tool()
+def experiment_status() -> str:
+    """Zeigt das laufende Selbstexperiment (Regel, Zielgröße, Fortschritt, heutige Bedingung A
+    oder B, Einhaltung, Zuweisung aller Tage), die beendeten mit vorsichtig formuliertem
+    Ergebnis und die acht Vorlagen mit ihrem Schlüssel (für experiment_starten). Das Ergebnis
+    eines laufenden Experiments gibt es bewusst erst nach dem Ende. Ergebnisse sind Hinweise
+    aus einem kleinen Selbstexperiment, kein Beweis."""
+    return _aufruf("GET", "experiment")
+
+
+@mcp.tool()
+def experiment_starten(
+    vorlage: str = "",
+    titel: str = "",
+    hypothese: str = "",
+    regel_wenn: str = "",
+    regel_dann: str = "",
+    design: Literal["tageweise", "bloecke", "abab", ""] = "",
+    blocklaenge: int | None = None,
+    dauer_tage: int | None = None,
+    zielgroesse: str = "",
+    start: str = "",
+) -> str:
+    """Startet ein Selbstexperiment. Nur auf ausdrücklichen Wunsch des Nutzers, nie von sich
+    aus. Entweder `vorlage` (Schlüssel aus experiment_status, z. B. "mikropausen") oder eigene
+    Felder: `titel`, `hypothese` (was erwartet der Nutzer), Regel als `regel_wenn` ("es 14 Uhr
+    ist") und `regel_dann` ("trinke ich keinen Kaffee mehr"), `design` ("tageweise",
+    "bloecke", "abab"), `blocklaenge` (Tage je Block bzw. Phase), `dauer_tage` (8 bis 120; bei
+    abab 4 x Phasenlänge), `zielgroesse` (produktivitaet, zufriedenheit, abgeschaltet,
+    schlaf_folgenacht, deepwork_min, wechsel_pro_h, beginn, plan_erfuellung), `start`
+    (JJJJ-MM-TT, Standard heute). Zu einer Vorlage überschreiben angegebene Felder die
+    Vorgaben. Die Bedingung jedes Tages wird sofort zufällig zugewiesen und ist danach
+    unveränderlich; auch Hypothese, Regel, Zielgröße und Dauer. Es kann nur ein Experiment
+    gleichzeitig laufen."""
+    daten = {
+        k: v
+        for k, v in {
+            "vorlage": vorlage,
+            "titel": titel,
+            "hypothese": hypothese,
+            "regel_wenn": regel_wenn,
+            "regel_dann": regel_dann,
+            "design": design,
+            "blocklaenge": blocklaenge,
+            "dauer_tage": dauer_tage,
+            "zielgroesse": zielgroesse,
+            "start": start,
+        }.items()
+        if v not in ("", None)
+    }
+    return _aufruf("POST", "experiment", daten)
+
+
+@mcp.tool()
+def experiment_tag_bestaetigen(datum: str, eingehalten: bool) -> str:
+    """Trägt für einen Tag (JJJJ-MM-TT) des laufenden Experiments ein, ob die Bedingung
+    eingehalten wurde ("Hast du dich heute an die Bedingung gehalten?"). Die Antwort muss der
+    Nutzer selbst geben, nie raten. Fehler, wenn an dem Tag kein Experimenttag existiert."""
+    return _aufruf("POST", f"experiment/tag/{quote(datum, safe='')}", {"eingehalten": eingehalten})
+
+
+@mcp.tool()
+def wochenbericht_daten(datum: str) -> str:
+    """Liefert kompakt alles für einen Wochenrückblick der Woche (Montag bis Sonntag), die das
+    Datum (JJJJ-MM-TT) enthält: je Tag Scores, Notizen und Tagesmerkmale (nur bewertete Tage),
+    Durchschnitt der 4 Wochen davor, die wichtigsten Muster-Hinweise (Unterschiede und
+    Zusammenhänge, keine Ursachen), Plan-Faktor, sozialen Jetlag, das laufende Experiment und
+    die Experiment-Vorlagen. Wird vom Prompt "wochenbericht" genutzt."""
+    return _aufruf("GET", f"wochenbericht/{quote(datum, safe='')}")
+
+
+WOCHENBERICHT_ANWEISUNG = """\
+Schreibe einen kurzen deutschen Wochenrückblick (höchstens 200 Wörter) zur Zeiterfassung.
+
+Vorgehen:
+1. Rufe das Tool wochenbericht_daten auf{woche}.
+2. Fasse die Woche knapp zusammen: Scores im Vergleich zu den 4 Wochen davor, Deep Work,
+   Tage mit Fortschritt, auffällige Tage. Erwähne nur Zahlen, die in den Daten stehen.
+3. Nenne ein bis zwei Auffälligkeiten aus den Muster-Hinweisen, nur wenn dort welche stehen.
+4. Schlage höchstens zwei passende Experimente aus den Vorlagen (experiment_vorlagen) vor, mit
+   Titel und Wenn-dann-Regel. Starte nie von dir aus ein Experiment: Der Nutzer entscheidet.
+   Läuft schon eines, erwähne es und schlage kein neues vor.
+
+Regeln (Forschungsgrundlage der App, docs/forschung.md, „Was die App nicht behauptet“):
+- Formuliere Hypothesen, keine Ursachen: „könnte zusammenhängen“, „fällt auf“, nie „führt
+  zu“ oder „verursacht“. Kausale Aussagen gibt es nur nach einem randomisierten
+  Selbstexperiment, und auch dann vorsichtig.
+- Keine festen Arbeitsrhythmen (90/20, Pomodoro) empfehlen.
+- Kein „mehr Wasser oder Kaffee steigert den Fokus“.
+- Keine Pauschalzahlen wie „40 % Verlust durch Kontextwechsel“ oder „23 Minuten
+  Wiederaufnahme“.
+- Weise bei Tagen ohne Bewertung darauf hin, statt Werte zu schätzen. Erfinde nichts, rate
+  keine Scores.
+- Ist ein hoher Anteil nachgetragen (> 50 %), erwähne, dass die Merkmale dann rekonstruiert
+  und ungenauer sind.
+"""
+
+
+@mcp.prompt()
+def wochenbericht(datum: str = "") -> str:
+    """Vorsichtiger Wochenrückblick mit ein bis zwei Experiment-Vorschlägen. `datum`
+    (JJJJ-MM-TT) wählt die Woche; leer = die aktuelle Woche."""
+    woche = f" mit datum={datum}" if datum else " für die aktuelle Woche (heutiges Datum)"
+    return WOCHENBERICHT_ANWEISUNG.format(woche=woche)
 
 
 def main(argv=None):

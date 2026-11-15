@@ -3,7 +3,7 @@ from datetime import date
 from django.contrib.auth import views as auth_views
 from django.urls import path, register_converter
 
-from . import api, views
+from . import api, experiment_views, views
 
 
 class IsoDatum:
@@ -47,6 +47,12 @@ urlpatterns = [
     path("plan/<int:pk>/", views.plan_speichern, name="plan_bearbeiten"),
     path("plan/<int:pk>/loeschen/", views.plan_loeschen, name="plan_loeschen"),
     path("muster/", views.muster, name="muster"),
+    path("experimente/", experiment_views.liste, name="experimente"),
+    path("experimente/neu/", experiment_views.neu, name="experiment_neu"),
+    path("experimente/<int:pk>/", experiment_views.detail, name="experiment_detail"),
+    path(
+        "experimente/<int:pk>/abbrechen/", experiment_views.abbrechen, name="experiment_abbrechen"
+    ),
     path("export.csv", views.export_tage, name="export_tage"),
     path("export-eintraege.csv", views.export_eintraege, name="export_eintraege"),
     path("einstellungen/", views.einstellungen, name="einstellungen"),
@@ -68,5 +74,8 @@ urlpatterns = [
     path("api/v1/muster", api.muster),
     path("api/v1/plan", api.plan),
     path("api/v1/plan/<int:pk>", api.plan_loeschen),
+    path("api/v1/experiment", api.experiment),
+    path("api/v1/experiment/tag/<datum:datum>", api.experiment_tag),
+    path("api/v1/wochenbericht/<datum:datum>", api.wochenbericht),
     path("api/v1/<path:rest>", api.unbekannt),
 ]
