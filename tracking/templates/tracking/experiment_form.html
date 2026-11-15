@@ -5,7 +5,7 @@
 <h1>Neues Experiment</h1>
 {% if vorlage %}<p class="klein">Vorlage „{{ vorlage.titel }}“. {{ vorlage.hinweis }}</p>{% endif %}
 <p class="klein">Nach dem Start lassen sich Hypothese, Regel, Zielgröße und Dauer nicht mehr ändern, und die Bedingung jedes Tages steht fest. So kannst du nichts nachträglich zurechtbiegen. Abbrechen geht nur mit Vermerk.</p>
-<form method="post" class="formular">
+<form method="post" class="formular" hx-get="{% url 'experiment_design_hinweis' %}" hx-trigger="change" hx-target="#design-hinweis" hx-swap="innerHTML" hx-push-url="false">
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="fehler" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   {% for feld in form %}
@@ -28,6 +28,7 @@
   </div>
   {% endif %}
   {% endfor %}
+  <div id="design-hinweis" aria-live="polite">{% include "tracking/_experiment_design_hinweis.html" %}</div>
   <div class="knopfzeile">
     <button class="btn btn-primaer">Experiment starten</button>
     <a class="btn btn-sekundaer" href="{% url 'experimente' %}">Abbrechen</a>

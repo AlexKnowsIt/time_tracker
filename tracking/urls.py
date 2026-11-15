@@ -48,6 +48,11 @@ urlpatterns = [
     path("plan/<int:pk>/loeschen/", views.plan_loeschen, name="plan_loeschen"),
     path("muster/", views.muster, name="muster"),
     path("experimente/", experiment_views.liste, name="experimente"),
+    path(
+        "experimente/neu/design-hinweis/",
+        experiment_views.design_hinweis_teil,
+        name="experiment_design_hinweis",
+    ),
     path("experimente/neu/", experiment_views.neu, name="experiment_neu"),
     path("experimente/<int:pk>/", experiment_views.detail, name="experiment_detail"),
     path(

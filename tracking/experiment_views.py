@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from . import experimente
+from . import experimente, statistik
 from .forms import AbbruchForm, ExperimentForm
 from .merkmale import formatiere, tagesmerkmale
 from .models import Experiment, Tagesbewertung
@@ -130,6 +130,41 @@ def ergebnis_anzeige(erg, zielgroesse):
     }
 
 
+def design_hinweis(design, blocklaenge, dauer):
+    """Kleinstes erreichbares p des gewählten Designs (für das Formular) plus Warnung bei ABAB.
+    None, wenn die Angaben noch unvollständig sind."""
+    if design not in (experimente.TAGEWEISE, experimente.BLOECKE, experimente.ABAB):
+        return None
+    laenge = 1 if design == experimente.TAGEWEISE else blocklaenge
+    if design == experimente.ABAB and laenge:
+        dauer = 4 * laenge
+    if not dauer or not laenge or experimente.design_fehler(design, dauer, laenge):
+        return None
+    p = statistik.kleinstes_p(design, dauer, laenge)
+    return {
+        "p_text": f"{p:.3f}".replace(".", ","),
+        "abab": design == experimente.ABAB,
+        "kann_bestaetigen": p <= experimente.HYPOTHESE_P,
+    }
+
+
+def _zahl(wert):
+    try:
+        return int(wert)
+    except (TypeError, ValueError):
+        return None
+
+
+@login_required
+def design_hinweis_teil(request):
+    """HTMX-Teil: Hinweis zum gewählten Design, wird bei jeder Änderung im Formular geladen."""
+    g = request.GET
+    hinweis = design_hinweis(
+        g.get("design"), _zahl(g.get("blocklaenge")), _zahl(g.get("dauer_tage"))
+    )
+    return render(request, "tracking/_experiment_design_hinweis.html", {"hinweis": hinweis})
+
+
 def vorlagen_liste():
     return [
         {
@@ -238,7 +273,16 @@ def neu(request):
     return render(
         request,
         "tracking/experiment_form.html",
-        {"form": form, "vorlage": vorlage, "ziele": experimente.ZIELE},
+        {
+            "form": form,
+            "vorlage": vorlage,
+            "ziele": experimente.ZIELE,
+            "hinweis": design_hinweis(
+                form["design"].value(),
+                _zahl(form["blocklaenge"].value()),
+                _zahl(form["dauer_tage"].value()),
+            ),
+        },
     )
 
 

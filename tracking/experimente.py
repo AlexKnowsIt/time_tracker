@@ -49,11 +49,15 @@ VORLAGEN = {
         "hypothese": "Wenn ich um 22:30 Uhr ins Bett gehe, bin ich am nächsten Tag produktiver.",
         "wenn": "es 22:30 Uhr ist",
         "dann": "gehe ich ins Bett",
-        "design": ABAB,
-        "blocklaenge": 14,
+        "design": BLOECKE,
+        "blocklaenge": 7,
         "dauer": 56,
         "ziel": "produktivitaet",
-        "hinweis": "Evidenz stark für die Wirkung von Schlafmangel: Van Dongen et al. 2003.",
+        "hinweis": (
+            "Evidenz stark für die Wirkung von Schlafmangel: Van Dongen et al. 2003. "
+            "Die Forschung empfiehlt längere Phasen als 7 Tage; als Kompromiss gibt es acht "
+            "zufällig verteilte Wochenblöcke, damit der Test überhaupt etwas bestätigen kann."
+        ),
     },
     "mikropausen": {
         "titel": "Mikropausen",
@@ -104,9 +108,9 @@ VORLAGEN = {
         "hypothese": "Mit Puffer im Plan erreiche ich einen größeren Teil dessen, was ich plane.",
         "wenn": "ich plane",
         "dann": "multipliziere ich die Dauer mit meinem Plan-Faktor",
-        "design": ABAB,
+        "design": BLOECKE,
         "blocklaenge": 7,
-        "dauer": 28,
+        "dauer": 56,
         "ziel": "plan_erfuellung",
         "hinweis": "Evidenz stark für den Planungsfehler: Buehler, Griffin & Ross 1994.",
     },
@@ -115,9 +119,9 @@ VORLAGEN = {
         "hypothese": "Mit einem festen Feierabendritual bin ich abends zufriedener.",
         "wenn": "ich Feierabend mache",
         "dann": "schließe ich mit einem festen Ritual ab",
-        "design": ABAB,
+        "design": BLOECKE,
         "blocklaenge": 7,
-        "dauer": 28,
+        "dauer": 56,
         "ziel": "zufriedenheit",
         "hinweis": "Evidenz mittel (korrelativ): Wendsche & Lohmann-Haislah 2017.",
     },

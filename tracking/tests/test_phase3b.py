@@ -976,3 +976,28 @@ def test_demodaten_experimente_plan_und_schlaf():
     assert schlafdauer_h(b.bettzeit, b.aufstehzeit) == float(b.schlaf_h)
     with pytest.raises(Exception, match="schon Daten"):
         call_command("demodaten", "demo")
+
+
+def test_kleinstes_p_je_design():
+    assert statistik.kleinstes_p("abab", 28, 7) == 0.5
+    assert statistik.kleinstes_p("bloecke", 56, 7) == pytest.approx(1 / 70)
+    assert statistik.kleinstes_p("tageweise", 20, 1) == pytest.approx(1 / 184756)
+    assert statistik.kleinstes_p("bloecke", 30, 7) is None
+
+
+def test_vorlagen_sind_bestaetigungsfaehig():
+    for key, v in experimente.VORLAGEN.items():
+        assert experimente.design_fehler(v["design"], v["dauer"], v["blocklaenge"]) is None, key
+        assert statistik.kleinstes_p(v["design"], v["dauer"], v["blocklaenge"]) <= 0.05, key
+
+
+def test_experiment_formular_zeigt_kleinstes_p_und_abab_warnung(client):
+    html = client.get(reverse("experiment_neu") + "?vorlage=plan_puffer").content.decode()
+    assert "0,014" in html and "kann statistisch nichts bestätigen" not in html
+    teil = client.get(
+        reverse("experiment_design_hinweis"), {"design": "abab", "blocklaenge": "7"}
+    ).content.decode()
+    assert "0,500" in teil and "kann statistisch nichts bestätigen, nur beschreiben" in teil
+    assert (
+        client.get(reverse("experiment_design_hinweis"), {"design": "abab"}).content.strip() == b""
+    )

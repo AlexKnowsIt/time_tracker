@@ -207,6 +207,19 @@ def anzahl_zuweisungen(design, einheiten, k_b):
     return 2 if design == "abab" else math.comb(einheiten, k_b)
 
 
+def kleinstes_p(design, dauer_tage, blocklaenge=1):
+    """Kleinster p-Wert, den das Design bei Randomisierungstest erreichen kann (1 / Zahl der
+    zulässigen Zuweisungen). None, wenn Dauer und Blocklänge nicht zusammenpassen.
+
+    Für die Anzeige beim Anlegen: ABAB bleibt bei 0,5, 8 Blöcke à 7 Tage erreichen etwa 0,014.
+    """
+    laenge = 1 if design == "tageweise" else blocklaenge
+    if not laenge or laenge < 1 or dauer_tage % laenge or dauer_tage < laenge:
+        return None
+    m = dauer_tage // laenge
+    return 1 / anzahl_zuweisungen(design, m, m // 2)
+
+
 def _zulaessige_einheiten(design, m, k_b):
     """Alle zulässigen Zuweisungen auf Einheiten-Ebene als Tupel aus "A"/"B"."""
     if design == "abab":
