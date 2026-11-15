@@ -162,7 +162,7 @@ def test_randomisierungstest_bloecke_exakt():
     test = statistik.randomisierungstest(werte, z, "bloecke", 2)
     assert test["exakt"] and test["n_zuweisungen"] == 70  # C(8, 4)
     assert test["p"] == pytest.approx(2 / 70)  # B-Blöcke vs. Spiegelbild
-    assert test["p_min"] == pytest.approx(1 / 70)
+    assert test["p_min"] == pytest.approx(2 / 70)
 
 
 def test_randomisierungstest_exakter_wert_bei_wenig_zuweisungen():
@@ -175,7 +175,7 @@ def test_randomisierungstest_exakter_wert_bei_wenig_zuweisungen():
 def test_randomisierungstest_abab_hat_nur_zwei_zuweisungen():
     z = experimente.zuweisung("abab", 28, 7, random.Random(2))
     test = statistik.randomisierungstest(_werte(z, 3, 8), z, "abab", 7)
-    assert test["n_zuweisungen"] == 2 and test["exakt"] and test["p_min"] == 0.5
+    assert test["n_zuweisungen"] == 2 and test["exakt"] and test["p_min"] == 1.0
     erg = experimente.auswerten(
         [(g, w, None) for g, w in zip(z, _werte(z, 3, 8), strict=True)], "abab", 7, "produktivitaet"
     )
@@ -979,9 +979,9 @@ def test_demodaten_experimente_plan_und_schlaf():
 
 
 def test_kleinstes_p_je_design():
-    assert statistik.kleinstes_p("abab", 28, 7) == 0.5
-    assert statistik.kleinstes_p("bloecke", 56, 7) == pytest.approx(1 / 70)
-    assert statistik.kleinstes_p("tageweise", 20, 1) == pytest.approx(1 / 184756)
+    assert statistik.kleinstes_p("abab", 28, 7) == 1.0
+    assert statistik.kleinstes_p("bloecke", 56, 7) == pytest.approx(2 / 70)
+    assert statistik.kleinstes_p("tageweise", 20, 1) == pytest.approx(2 / 184756)
     assert statistik.kleinstes_p("bloecke", 30, 7) is None
 
 
@@ -993,11 +993,36 @@ def test_vorlagen_sind_bestaetigungsfaehig():
 
 def test_experiment_formular_zeigt_kleinstes_p_und_abab_warnung(client):
     html = client.get(reverse("experiment_neu") + "?vorlage=plan_puffer").content.decode()
-    assert "0,014" in html and "kann statistisch nichts bestätigen" not in html
+    assert "0,029" in html and "kann statistisch nichts bestätigen" not in html
     teil = client.get(
         reverse("experiment_design_hinweis"), {"design": "abab", "blocklaenge": "7"}
     ).content.decode()
-    assert "0,500" in teil and "kann statistisch nichts bestätigen, nur beschreiben" in teil
+    assert "1,000" in teil and "kann statistisch nichts bestätigen, nur beschreiben" in teil
     assert (
         client.get(reverse("experiment_design_hinweis"), {"design": "abab"}).content.strip() == b""
     )
+
+
+def _getrennte_werte(z, seed=7):
+    """Alle B-Werte weit über allen A-Werten, innerhalb der Gruppen zufällig gestreut."""
+    zufall = random.Random(seed)
+    return [(1000.0 if g == "B" else 0.0) + zufall.random() * 100 for g in z]
+
+
+@pytest.mark.parametrize(
+    ("design", "dauer", "laenge"),
+    [("abab", 28, 7), ("bloecke", 56, 7), ("bloecke", 32, 4), ("bloecke", 30, 5)],
+)
+def test_kleinstes_p_stimmt_mit_echtem_test_bei_maximaler_trennung(design, dauer, laenge):
+    z = experimente.zuweisung(design, dauer, laenge, random.Random(4))
+    test = statistik.randomisierungstest(_getrennte_werte(z), z, design, laenge)
+    assert test["exakt"]
+    assert test["p"] == pytest.approx(statistik.kleinstes_p(design, dauer, laenge))
+    assert test["p_min"] == pytest.approx(test["p"])
+
+
+@pytest.mark.parametrize("dauer", [8, 10, 12])
+def test_kleinstes_p_tageweise_ist_untergrenze(dauer):
+    z = experimente.zuweisung("tageweise", dauer, 1, random.Random(4))
+    test = statistik.randomisierungstest(_getrennte_werte(z), z, "tageweise", 1)
+    assert test["p"] >= statistik.kleinstes_p("tageweise", dauer, 1) - 1e-12

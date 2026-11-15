@@ -1,4 +1,4 @@
 {% if hinweis %}
-<p class="klein">Kleinstes p, das dieses Design erreichen kann: <strong>{{ hinweis.p_text }}</strong>.{% if hinweis.kann_bestaetigen %} Das reicht, um bei einem klaren Unterschied etwas zu bestätigen (p ≤ 0,05).{% endif %}</p>
+<p class="klein">Kleinstes p, das dieses Design (zweiseitig) erreichen kann: <strong>{{ hinweis.p_text }}</strong>.{% if hinweis.kann_bestaetigen %} Das reicht, um bei einem klaren Unterschied etwas zu bestätigen (p ≤ 0,05).{% endif %}</p>
 {% if hinweis.abab %}<div class="fehler" role="note">ABAB hat nur 2 mögliche Zuweisungen. Es kann statistisch nichts bestätigen, nur beschreiben. Besser: „Blöcke“ mit 7 Tagen je Block und 8 Blöcken (56 Tage, 70 mögliche Zuweisungen).</div>{% endif %}
 {% endif %}

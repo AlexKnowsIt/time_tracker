@@ -301,7 +301,7 @@ Grundlage für Methoden, Befunde und Experiment-Vorlagen ist `docs/forschung.md`
   sonst 5 000 Ziehungen), Cliff's Delta mit Bootstrap-Intervall, Einhaltung in Prozent. Primär nach
   Zuweisung (Intention-to-treat), als Nebenergebnis ohne Tage mit „nicht eingehalten“ (ohne p).
   Das Ergebnis erscheint erst nach dem Ende. ABAB hat nur zwei zulässige Zuweisungen (ABAB,
-  BABA): der Test kann nie unter p = 0,5 kommen, die App sagt das offen und beschreibt nur.
+  BABA): p ist immer 1 (beide Zuweisungen sind Treffer), die App sagt das offen und beschreibt nur.
 - Plan-Faktor (`plan.plan_faktor`): Median Ist/Plan je Kategorie-Art der letzten 28 Tage mit
   mindestens 5 Plantagen; auf der Plan-Seite, als Hinweis „Realistisch: …“ im Planblock-Dialog,
   in der API (GET plan) und im MCP.

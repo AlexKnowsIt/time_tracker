@@ -33,13 +33,13 @@ zugewiesen, die Auswertung erfolgt per Permutationstest.
 | Vorlage | Regel (Wenn-dann) | Design | Zielgröße |
 |---|---|---|---|
 | Koffein-Schluss | Wenn es 14 Uhr ist, dann trinke ich keinen Kaffee mehr. | 2-Tages-Blöcke randomisiert, ca. 16 Tage | Schlaf, Zufriedenheit am Folgetag |
-| Schlafkorridor | Wenn es 22:30 Uhr ist, dann gehe ich ins Bett. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage; längere Phasen wären besser, Kompromiss), kleinstes p ≈ 0,014 | Produktivität |
+| Schlafkorridor | Wenn es 22:30 Uhr ist, dann gehe ich ins Bett. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage; längere Phasen wären besser, Kompromiss), kleinstes p ≈ 0,029 (zweiseitig, 2 von 70 Zuweisungen) | Produktivität |
 | Mikropausen | Wenn ich 50 Minuten gearbeitet habe, dann mache ich 5–10 Minuten Pause. | tageweise randomisiert, 20 Tage | Zufriedenheit (Energie), dann Produktivität |
 | Gebündelte Kommunikation | Wenn ich vormittags Deep Work mache, dann öffne ich keine Mails und keinen Chat. | tageweise randomisiert, 20 Tage | Wechsel/h, Produktivität |
 | Abschlussnotiz | Wenn ich einen Block wechsle, dann notiere ich 2 Minuten lang Stand und nächsten Schritt. | tageweise randomisiert, 20 Tage | Produktivität |
 | Wenn-dann-Start | Wenn ich morgens am Schreibtisch sitze, dann beginne ich sofort mit dem geplanten Deep-Work-Block. | tageweise randomisiert, 28 Tage | Arbeitsbeginn, Deep Work |
-| Plan-Puffer | Wenn ich plane, dann multipliziere ich die Dauer mit meinem Plan-Faktor. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage), kleinstes p ≈ 0,014 | Ist/Plan-Verhältnis |
-| Abschalt-Ritual | Wenn ich Feierabend mache, dann schließe ich mit einem festen Ritual ab. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage), kleinstes p ≈ 0,014 | Zufriedenheit, Schlaf |
+| Plan-Puffer | Wenn ich plane, dann multipliziere ich die Dauer mit meinem Plan-Faktor. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage), kleinstes p ≈ 0,029 (zweiseitig, 2 von 70 Zuweisungen) | Ist/Plan-Verhältnis |
+| Abschalt-Ritual | Wenn ich Feierabend mache, dann schließe ich mit einem festen Ritual ab. | randomisierte Wochenblöcke (8 Blöcke à 7 Tage, 56 Tage), kleinstes p ≈ 0,029 (zweiseitig, 2 von 70 Zuweisungen) | Zufriedenheit, Schlaf |
 
 ## Statistik (Standardbibliothek, 14–200 Tage)
 

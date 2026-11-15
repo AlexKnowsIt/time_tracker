@@ -208,16 +208,23 @@ def anzahl_zuweisungen(design, einheiten, k_b):
 
 
 def kleinstes_p(design, dauer_tage, blocklaenge=1):
-    """Kleinster p-Wert, den das Design bei Randomisierungstest erreichen kann (1 / Zahl der
-    zulässigen Zuweisungen). None, wenn Dauer und Blocklänge nicht zusammenpassen.
+    """Kleinster p-Wert, den der zweiseitige Randomisierungstest dieses Designs erreichen kann.
+    None, wenn Dauer und Blocklänge nicht zusammenpassen.
 
-    Für die Anzeige beim Anlegen: ABAB bleibt bei 0,5, 8 Blöcke à 7 Tage erreichen etwa 0,014.
+    Bei gleich vielen A- und B-Einheiten liefert auch die gespiegelte Zuweisung (A und B
+    vertauscht) dieselbe |Differenz|; sie zählt als Treffer: p_min = 2 / Zuweisungen. Bei
+    ungerader Einheitenzahl gibt es keine Spiegelung: 1 / Zuweisungen. ABAB: 2 von 2 = 1,0;
+    8 Blöcke à 7 Tage: 2 / 70 ≈ 0,029. Bei Blöcken und ABAB wird der Wert mit passenden Daten
+    erreicht; tageweise ist er nur eine Untergrenze, weil der Median Bindungen erzeugt (Tausch
+    des kleinsten B- gegen den größten A-Wert ändert beide Mediane nicht) und der echte Test
+    bei wenigen Tagen etwas höher liegt.
     """
     laenge = 1 if design == "tageweise" else blocklaenge
     if not laenge or laenge < 1 or dauer_tage % laenge or dauer_tage < laenge:
         return None
     m = dauer_tage // laenge
-    return 1 / anzahl_zuweisungen(design, m, m // 2)
+    treffer = 2 if m % 2 == 0 else 1
+    return treffer / anzahl_zuweisungen(design, m, m // 2)
 
 
 def _zulaessige_einheiten(design, m, k_b):
@@ -249,8 +256,8 @@ def randomisierungstest(
     Monte-Carlo mit ``n_perm`` Ziehungen, p = (Treffer + 1) / (n_perm + 1). Zweiseitig.
 
     Rückgabe: dict mit beobachtet, p, exakt, n_zuweisungen und p_min (kleinster erreichbarer
-    p-Wert dieses Schemas, 1/n_zuweisungen); None, wenn eine Bedingung zu wenige Werte hat.
-    ABAB hat nur 2 Zuweisungen: der Test kann nie unter p = 0,5 kommen und bestätigt nichts.
+    p-Wert dieses Schemas, siehe ``kleinstes_p``); None, wenn eine Bedingung zu wenige Werte hat.
+    ABAB hat nur 2 Zuweisungen (die gespiegelte zählt mit): p ist immer 1, es bestätigt nichts.
     """
     rng = rng or random.Random(0)
     n = len(werte)
@@ -275,10 +282,11 @@ def randomisierungstest(
     exakt = gesamt <= max_exakt
     if exakt:
         treffer = sum(trifft(e) for e in _zulaessige_einheiten(design, m, k_b))
-        p, p_min = treffer / gesamt, 1 / gesamt
+        p, p_min = treffer / gesamt, kleinstes_p(design, n, laenge)
     else:
         treffer = sum(trifft(_zufaellige_einheit(design, m, k_b, rng)) for _ in range(n_perm))
-        p, p_min = (treffer + 1) / (n_perm + 1), 1 / (n_perm + 1)
+        p = (treffer + 1) / (n_perm + 1)
+        p_min = max(1 / (n_perm + 1), kleinstes_p(design, n, laenge))
     return {
         "beobachtet": beobachtet,
         "p": p,
