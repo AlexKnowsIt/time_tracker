@@ -1,4 +1,4 @@
-# Zeiterfassung
+# Tagwerk
 
 Personal time tracking with a daily review. During the day you log activities, breaks and water
 intake (one tap each); in the evening you rate the day with two scores: productivity and
