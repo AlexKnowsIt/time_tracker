@@ -29,8 +29,10 @@ def test_start_stopp_trinken_tag(mcp_env):
     assert '"kaffee": 2' in server.trinken_erfassen("kaffee", 2)
     tag = server.tag_abrufen("2026-11-10")
     assert '"merkmale": null' in tag
-    assert "Fehler 400" in server.tag_bewerten("2026-11-10", 11, 5)
-    assert '"produktivitaet": 7' in server.tag_bewerten("2026-11-10", 7, 8, notiz="ok")
+    assert "Fehler 400" in server.tag_bewerten("2026-11-10", 11, 5, True)
+    assert '"produktivitaet": 7' in server.tag_bewerten(
+        "2026-11-10", 7, 8, True, notiz="ok", abgeschaltet=4
+    )
 
 
 def test_fehlertexte_statt_stacktrace(mcp_env, monkeypatch):

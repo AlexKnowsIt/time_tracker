@@ -131,12 +131,15 @@ def test_nachtragen_und_fremde_kategorie_abgelehnt(client, nutzer, deepwork):
 def test_tagesabschluss_anlegen_und_aktualisieren(client, nutzer):
     url = reverse("abschluss", args=["2026-11-14"])
     assert (
-        client.post(url, {"produktivitaet": 7, "zufriedenheit": 6, "notiz": "gut"}).status_code
+        client.post(
+            url, {"produktivitaet": 7, "zufriedenheit": 6, "fortschritt": "True", "notiz": "gut"}
+        ).status_code
         == 302
     )
-    assert client.post(url, {"produktivitaet": 4, "zufriedenheit": 9}).status_code == 302
+    antwort = client.post(url, {"produktivitaet": 4, "zufriedenheit": 9, "fortschritt": "False"})
+    assert antwort.status_code == 302
     b = Tagesbewertung.objects.get(nutzer=nutzer)
-    assert (b.produktivitaet, b.zufriedenheit) == (4, 9)
+    assert (b.produktivitaet, b.zufriedenheit, b.fortschritt) == (4, 9, False)
 
 
 def test_zusammenfassung_erst_nach_score(client, nutzer, deepwork):
@@ -149,7 +152,8 @@ def test_zusammenfassung_erst_nach_score(client, nutzer, deepwork):
     url = reverse("tag", args=["2026-11-14"])
     assert client.get(url).context["zusammenfassung"] is None
     client.post(
-        reverse("abschluss", args=["2026-11-14"]), {"produktivitaet": 8, "zufriedenheit": 5}
+        reverse("abschluss", args=["2026-11-14"]),
+        {"produktivitaet": 8, "zufriedenheit": 5, "fortschritt": "True"},
     )
     antwort = client.get(url)
     assert antwort.context["zusammenfassung"]["arten"] == [("Deep Work", "1 h 00 min")]

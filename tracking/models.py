@@ -37,6 +37,10 @@ class Eintrag(models.Model):
     start = models.DateTimeField()
     ende = models.DateTimeField(null=True, blank=True)
     notiz = models.TextField(blank=True)
+    abgeschlossen = models.BooleanField(
+        "Aufgabe abgeschlossen?", null=True, blank=True, help_text="Leer = nicht beantwortet"
+    )
+    unterbrochen = models.BooleanField("Unterbrochen", default=False)
 
     class Meta:
         verbose_name_plural = "Einträge"
@@ -92,6 +96,20 @@ class Tagesbewertung(models.Model):
         help_text="Wie zufrieden bist du mit dem Tag? (1–10)",
         validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
+    fortschritt = models.BooleanField(
+        "Fortschritt",
+        null=True,  # null nur für Altdaten vor der Frage; das Formular verlangt Ja oder Nein
+        blank=True,
+        help_text="Hast du heute bei etwas Wichtigem Fortschritt gemacht?",
+    )
+    fortschritt_notiz = models.CharField("Fortschritt: Was?", max_length=200, blank=True)
+    abgeschaltet = models.PositiveSmallIntegerField(
+        "Abschalten",
+        null=True,
+        blank=True,
+        help_text="Wie gut konntest du nach der Arbeit abschalten? (1–5)",
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     schlaf_h = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     notiz = models.TextField(blank=True, help_text="Was hat geholfen, was hat gestört?")
 
@@ -107,6 +125,11 @@ class Tagesbewertung(models.Model):
             models.CheckConstraint(
                 condition=Q(zufriedenheit__gte=1, zufriedenheit__lte=10),
                 name="zufriedenheit_1_bis_10",
+            ),
+            models.CheckConstraint(
+                condition=Q(abgeschaltet__isnull=True)
+                | Q(abgeschaltet__gte=1, abgeschaltet__lte=5),
+                name="abgeschaltet_1_bis_5",
             ),
         ]
 

@@ -142,6 +142,8 @@ def _eintrag(e, jetzt):
         "dauer_min": round(((e.ende or jetzt) - e.start).total_seconds() / 60),
         "laeuft": e.ende is None,
         "notiz": e.notiz,
+        "abgeschlossen": e.abgeschlossen,
+        "unterbrochen": e.unterbrochen,
     }
 
 
@@ -156,6 +158,9 @@ def _bewertung(b):
         "datum": str(b.datum),
         "produktivitaet": b.produktivitaet,
         "zufriedenheit": b.zufriedenheit,
+        "fortschritt": b.fortschritt,
+        "fortschritt_notiz": b.fortschritt_notiz,
+        "abgeschaltet": b.abgeschaltet,
         "schlaf_h": float(b.schlaf_h) if b.schlaf_h is not None else None,
         "notiz": b.notiz,
     }
@@ -215,6 +220,10 @@ def _form_fehler(form):
         t if feld == "__all__" else f"{feld}: {t}" for feld, texte in felder.items() for t in texte
     )
     return ApiFehler(400, text or "Ungültige Eingabe.", felder)
+
+
+def _runde(wert, stellen=2):
+    return None if wert is None else round(wert, stellen)
 
 
 def _zeitgrenze(text, name, ende):
@@ -394,12 +403,59 @@ def muster(request):
                 "gut": z["gut_text"],
                 "schwach": z["schwach_text"],
                 "effekt": round(z["effekt"], 2),
+                "delta": _runde(z["delta"]),
+                "ki": [_runde(z["ki_unten"]), _runde(z["ki_oben"])],
+                "deutlich": z["deutlich"],
             }
             for z in e["zeilen"]
         ],
-        hinweis="Gute gegen schwache Tage (oberes gegen unteres Drittel): Unterschiede, "
-        "keine Ursachen. Nur als Hypothesen verstehen.",
+        hinweis="Gute gegen schwache Tage (oberes gegen unteres Drittel, sortiert nach Cliff's "
+        "Delta, Intervall per Block-Bootstrap): Unterschiede, keine Ursachen. Nur als "
+        "Hypothesen verstehen; Ursachen prüft man mit Experimenten.",
     )
+    korr = k.get("korr")
+    if korr is None:
+        antwort["korrelationen"] = {
+            "fehlend": k["korr_fehlend"],
+            "hinweis": f"Korrelationen erst ab {k['min_tage_korrelation']} bewerteten Tagen.",
+        }
+    else:
+        antwort["korrelationen"] = {
+            "lag1_zielgroesse": _runde(korr["lag1"]),
+            "effektives_n": round(korr["n_eff"]),
+            "zeilen": [
+                {
+                    "key": z["key"],
+                    "label": z["label"],
+                    "n": z["n"],
+                    "r": _runde(z["r"]),
+                    "ki": [_runde(z["ki_unten"]), _runde(z["ki_oben"])],
+                    "p": _runde(z["p"], 3),
+                    "hypothese": z["hypothese"],
+                    "bh_treffer": z["bh_treffer"],
+                }
+                for z in korr["zeilen"]
+            ],
+            "hinweis": "Spearman-Korrelation nach Abzug der Wochentagsmittel, Intervall per "
+            "Block-Bootstrap, p per Permutation, Mehrfachtest nach Benjamini-Hochberg (q=0,1). "
+            "Als Hypothese gilt nur |r| >= 0,3. Zusammenhänge, keine Ursachen.",
+        }
+    modell = k.get("modell")
+    if modell is None:
+        antwort["mehrfachmodell"] = {
+            "fehlend": k["modell_fehlend"],
+            "hinweis": f"Mehrfachmodell erst ab {k['min_tage_modell']} bewerteten Tagen.",
+        }
+    else:
+        antwort["mehrfachmodell"] = {
+            "n_merkmale": modell["n_merkmale"],
+            "koeffizienten": [
+                {"key": c["key"], "label": c["label"], "koeffizient": _runde(c["koeff"])}
+                for c in modell["koeffizienten"]
+            ],
+            "hinweis": "Ridge-Regression, standardisiert, rein explorativ (kein Train/Test-Split). "
+            "Zeigt, welche Merkmale bei gleichzeitiger Betrachtung zusammenhängen, keine Ursachen.",
+        }
     return JsonResponse(antwort)
 
 

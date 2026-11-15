@@ -259,8 +259,27 @@ Auswertung.
 
 ### Phase 3: Hypothesen und Experimente (nach ca. 4 Wochen)
 
-- Korrelationsansicht mit den Vorsichtsregeln.
-- Modell und Ansicht für Experimente.
+Grundlage für Methoden, Befunde und Experiment-Vorlagen ist `docs/forschung.md`.
+
+**Phase 3a: Korrelationen, belastbarere Statistik – umgesetzt**
+
+- Erfassung: Tagesbewertung um `fortschritt` (Ja/Nein, Pflicht), `fortschritt_notiz` und
+  `abgeschaltet` (1–5, optional) erweitert; Eintrag um `abgeschlossen` (Ja/Nein/leer) und
+  `unterbrochen`. Gefragt wird nur im Eintragsformular, nie beim Wechsel oder Stopp auf „Jetzt“.
+- Neue Merkmale: Pausen je Deep-Work-Stunde, mittlere Pausenlänge, letzter Kaffee, Wasser vor 12
+  und 12–16 Uhr, Anteil unterbrochener/abgeschlossener Arbeitsblöcke; Kontext Schlafschnitt der
+  letzten 7 Nächte, Fortschritt, Abschalten am Vortag.
+- `statistik.py` (nur Stdlib, deterministisch über `random.Random`): Spearman, Cliff's Delta,
+  Block-Bootstrap, Lag-1, effektives n, Wochentagsbereinigung, Benjamini-Hochberg,
+  Permutationstest.
+- Muster-Seite in drei Stufen: gute gegen schwache Tage mit Delta und Intervall (ab 14 Tagen),
+  Korrelationen (ab 30 Tagen), Mehrfachmodell als Ridge-Regression, Top 5, explorativ (ab 90 Tagen).
+- Abweichung: Bootstrap- und Permutationszahl sind für unter 1 s Rechenzeit reduziert
+  (200 bzw. 400 statt 2 000).
+
+**Phase 3b: Experimente – offen**
+
+- Modell und Ansicht für Selbstexperimente (Vorlagen in `docs/forschung.md`), Plan-Faktor.
 
 ### Phase 4: Plan vs. Ist – umgesetzt (vorgezogen vor Phase 3)
 
@@ -303,7 +322,9 @@ Ziel: KI-Assistenten (Claude Code, Claude Desktop) bedienen die Zeiterfassung pe
 
 ### Phase 5: Optional
 
-- Wochenbericht per LLM, CSV-Export, Regression.
+- Umgesetzt: CSV-Export (`/export.csv` je bewertetem Tag, `/export-eintraege.csv`; Semikolon,
+  UTF-8 mit BOM, Dezimalkomma) und Regression über mehrere Merkmale (Ridge, siehe Phase 3a).
+- Offen: Wochenbericht per LLM.
 
 ## 9. Bewusst nicht vorgesehen
 

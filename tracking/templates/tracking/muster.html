@@ -3,7 +3,7 @@
 {% block titel %}Muster · Zeiterfassung{% endblock %}
 {% block inhalt %}
 <h1>Muster</h1>
-<p class="klein">Unterschiede, keine Ursachen.</p>
+<p class="klein text-lang">Unterschiede und Zusammenhänge, keine Ursachen. Ursachen prüfst du mit Experimenten.</p>
 
 <nav class="segment" aria-label="Zielgröße">
   {% for key, label in ziele.items %}
@@ -11,10 +11,7 @@
   {% endfor %}
 </nav>
 
-{% if fehlend %}
-<section class="karte"><p>Noch {% if fehlend == 1 %}1 bewerteter Tag{% else %}{{ fehlend }} bewertete Tage{% endif %} bis zur ersten Auswertung.</p>
-  <p class="klein">Ab {{ min_tage }} bewerteten Tagen (letzte {{ tage_max }} Tage) vergleicht die App gute und schwache Tage.</p></section>
-{% else %}
+{% if not fehlend %}
 <div class="kennzahlen">
   <div class="kennzahl"><span class="kennzahl-wert">{{ ergebnis.n }}</span><span class="kennzahl-label">bewertete Tage</span></div>
   <div class="kennzahl"><span class="kennzahl-wert">{{ ergebnis.gruppe_n }}</span><span class="kennzahl-label">Tage je Gruppe</span></div>
@@ -34,9 +31,11 @@
 {{ verlauf|json_script:"verlauf-daten" }}
 {% endif %}
 
-{% if not fehlend %}
-<h2 class="abschnitt">Gute gegen schwache Tage</h2>
-<p class="klein">Stärkste Unterschiede oben (relativ zur Streuung des Merkmals).</p>
+<h2 class="abschnitt">1 · Gute gegen schwache Tage</h2>
+{% if fehlend %}
+<p class="status">Noch {% if fehlend == 1 %}1 bewerteter Tag{% else %}{{ fehlend }} bewertete Tage{% endif %} bis zur ersten Auswertung (ab {{ min_tage }} Tagen, letzte {{ tage_max }} Tage).</p>
+{% else %}
+<p class="klein">Oberes gegen unteres Drittel der Tage. Sortiert nach Cliff's Delta: 0 = kein Unterschied, +1 bzw. −1 = die guten Tage liegen immer höher bzw. tiefer. „deutlich“ heißt, das Intervall (Block-Bootstrap, 95 %) schließt die 0 aus.</p>
 <p class="legende" aria-hidden="true"><span><i class="punkt gut"></i>Ø gute</span><span><i class="punkt schwach"></i>Ø schwache</span></p>
 <ul class="vergleich">
   {% for z in ergebnis.zeilen %}
@@ -49,7 +48,54 @@
       </div>
       <p class="vergleich-zahlen"><span class="gut"><span class="visuell-versteckt">Ø gute: </span>{{ z.gut_text }}</span><span class="schwach"><span class="visuell-versteckt">Ø schwache: </span>{{ z.schwach_text }}</span></p>
     </div>
+    {% if z.ki %}
+    <div class="vergleich-delta">
+      <div class="ki{% if not z.deutlich %} leise{% endif %}" aria-hidden="true"><span class="ki-balken" style="left:{{ z.ki.links|safe }}%;width:{{ z.ki.breite|safe }}%"></span><span class="ki-punkt" style="left:{{ z.ki.punkt|safe }}%"></span></div>
+      <span class="delta-text">Δ {{ z.delta|floatformat:"+2" }}{% if z.deutlich %} <span class="badge">deutlich</span>{% endif %}</span>
+      <span class="visuell-versteckt">Cliff's Delta {{ z.delta|floatformat:2 }}, Intervall {{ z.ki_unten|floatformat:2 }} bis {{ z.ki_oben|floatformat:2 }}{% if z.deutlich %}, deutlich{% endif %}</span>
+    </div>
+    {% endif %}
   </li>
+  {% empty %}
+  <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<h2 class="abschnitt">2 · Korrelationen</h2>
+{% if korr_fehlend %}
+<p class="status">Noch {% if korr_fehlend == 1 %}1 bewerteter Tag{% else %}{{ korr_fehlend }} bewertete Tage{% endif %} bis zu den Korrelationen (ab {{ min_tage_korrelation }} Tagen).</p>
+{% elif korr %}
+<p class="klein">Rangkorrelation (Spearman) jedes Merkmals mit {{ ziel_label }} über {{ korr.n }} Tage. Der Balken zeigt das 95-%-Intervall von −1 bis +1, die Linie in der Mitte ist 0. Nur ab |r| ≥ 0,3 gilt ein Zusammenhang als Hypothese.</p>
+<ul class="korr">
+  {% for z in korr.zeilen %}
+  <li{% if not z.hypothese %} class="leise"{% endif %}>
+    <p class="korr-label">{{ z.label }}</p>
+    <span class="korr-r">{{ z.r|floatformat:"+2" }}</span>
+    {% if z.ki %}<div class="ki{% if not z.hypothese %} leise{% endif %}" role="img" aria-label="Intervall {{ z.ki_unten|floatformat:2 }} bis {{ z.ki_oben|floatformat:2 }}"><span class="ki-balken" style="left:{{ z.ki.links|safe }}%;width:{{ z.ki.breite|safe }}%"></span><span class="ki-punkt" style="left:{{ z.ki.punkt|safe }}%"></span></div>{% else %}<span></span>{% endif %}
+    <div class="korr-badges">{% if z.hypothese %}<span class="badge">Hypothese</span>{% endif %}{% if z.bh_treffer %}<span class="badge neutral">bleibt nach Mehrfachtest-Korrektur</span>{% endif %}<span class="badge neutral">{{ z.n }} Tage</span></div>
+  </li>
+  {% empty %}
+  <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
+  {% endfor %}
+</ul>
+<ol class="fussnoten">
+  <li>Wochentagseffekte sind vorher herausgerechnet (Mittel je Wochentag abgezogen), bei Merkmal und {{ ziel_label }}.</li>
+  <li>Mehrfachtest: Bei vielen Merkmalen fällt zufällig einiges auf. Die Permutations-p-Werte werden deshalb mit Benjamini-Hochberg (q = 0,1) korrigiert; „bleibt nach Mehrfachtest-Korrektur“ heißt, der Treffer übersteht das.</li>
+  <li>Autokorrelation: Benachbarte Tage ähneln sich{% if korr.lag1 is not None %}; Lag 1 von {{ ziel_label }} ist {{ korr.lag1|floatformat:2 }}{% endif %}. Deshalb nutzt das Intervall Blöcke von 5 Tagen{% if korr.n_eff < korr.n %}, und die effektive Stichprobe ist nur etwa {{ korr.n_eff|floatformat:0 }} statt {{ korr.n }} Tage{% else %}. Effektive Stichprobe: {{ korr.n_eff|floatformat:0 }} Tage{% endif %}.</li>
+  <li>Ein Zusammenhang ist keine Ursache. Prüfe eine Hypothese mit einem Experiment.</li>
+</ol>
+{% endif %}
+
+<h2 class="abschnitt">3 · Mehrfachmodell</h2>
+{% if modell_fehlend %}
+<p class="status">Noch {% if modell_fehlend == 1 %}1 bewerteter Tag{% else %}{{ modell_fehlend }} bewertete Tage{% endif %} bis zum Mehrfachmodell (ab {{ min_tage_modell }} Tagen).</p>
+{% elif modell %}
+<p class="klein">Alle Merkmale zugleich (Ridge-Regression, {{ modell.n_merkmale }} Merkmale, {{ modell.n }} Tage). Die fünf stärksten Koeffizienten: Änderung von {{ ziel_label }} in Standardabweichungen je Standardabweichung des Merkmals, wenn die übrigen gleich bleiben. <strong>Explorativ</strong>: ohne Prüfung an neuen Daten, nur Hinweise, keine Ursachen.</p>
+<ul class="modell">
+  {% for k in modell.koeffizienten %}
+  <li><span class="korr-label">{{ k.label }}</span><span class="modell-wert">{{ k.koeff|floatformat:"+2" }}</span>
+    <span class="modell-balken{% if k.koeff < 0 %} minus{% endif %}" style="width:{{ k.breite|safe }}%" aria-hidden="true"></span></li>
   {% empty %}
   <li class="leer-hinweis">Für kein Merkmal gibt es genug Werte.</li>
   {% endfor %}

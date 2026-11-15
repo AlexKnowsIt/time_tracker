@@ -132,17 +132,31 @@ def trinken_erfassen(
 
 
 @mcp.tool()
-def eintrag_nachtragen(kategorie: str, start: str, ende: str, notiz: str = "") -> str:
+def eintrag_nachtragen(
+    kategorie: str,
+    start: str,
+    ende: str,
+    notiz: str = "",
+    abgeschlossen: bool | None = None,
+    unterbrochen: bool = False,
+) -> str:
     """Trägt einen vergangenen Zeitblock nach, wenn der Nutzer vergessen hat zu erfassen.
     `kategorie`: Name oder id. `start` und `ende`: ISO 8601, z. B. 2026-11-14T09:30:00+01:00
     (ohne Zeitzone gilt die der App). Das Ende muss nach dem Start liegen. Einträge dürfen
     sich nicht überschneiden: bei Überschneidung kommt ein Fehlertext mit dem Konflikt, dann
-    die Zeiten anpassen. Gibt den neuen Eintrag als JSON zurück."""
-    return _aufruf(
-        "POST",
-        "eintraege",
-        {"kategorie": kategorie, "start": start, "ende": ende, "notiz": notiz},
-    )
+    die Zeiten anpassen. Optional: `abgeschlossen` (Aufgabe abgeschlossen? nur angeben, wenn
+    der Nutzer es sagt) und `unterbrochen` (Block wurde unterbrochen). Gibt den neuen Eintrag
+    als JSON zurück."""
+    daten = {
+        "kategorie": kategorie,
+        "start": start,
+        "ende": ende,
+        "notiz": notiz,
+        "unterbrochen": unterbrochen,
+    }
+    if abgeschlossen is not None:
+        daten["abgeschlossen"] = abgeschlossen
+    return _aufruf("POST", "eintraege", daten)
 
 
 @mcp.tool()
@@ -159,17 +173,30 @@ def tag_bewerten(
     datum: str,
     produktivitaet: int,
     zufriedenheit: int,
+    fortschritt: bool,
     schlaf_h: float | None = None,
     notiz: str = "",
+    fortschritt_notiz: str = "",
+    abgeschaltet: int | None = None,
 ) -> str:
     """Speichert die Tagesbewertung (JJJJ-MM-TT) oder ersetzt eine vorhandene vollständig.
     `produktivitaet` ("Wie produktiv war der Tag?") und `zufriedenheit` ("Wie zufrieden bist
-    du mit dem Tag?") sind ganze Zahlen von 1 bis 10 und müssen vom Nutzer selbst genannt
-    werden, nie schätzen. `schlaf_h` optional (Stunden), `notiz`: was hat geholfen, was
-    gestört. Gibt die gespeicherte Bewertung zurück."""
-    daten = {"produktivitaet": produktivitaet, "zufriedenheit": zufriedenheit, "notiz": notiz}
+    du mit dem Tag?") sind ganze Zahlen von 1 bis 10, `fortschritt` ("Hast du heute bei etwas
+    Wichtigem Fortschritt gemacht?") ist ja/nein. Alle drei muss der Nutzer selbst nennen,
+    nie schätzen. Optional: `fortschritt_notiz` (was genau), `abgeschaltet` ("Wie gut konntest
+    du nach der Arbeit abschalten?", 1 bis 5), `schlaf_h` (Stunden), `notiz` (was hat geholfen,
+    was gestört). Gibt die gespeicherte Bewertung zurück."""
+    daten = {
+        "produktivitaet": produktivitaet,
+        "zufriedenheit": zufriedenheit,
+        "fortschritt": fortschritt,
+        "fortschritt_notiz": fortschritt_notiz,
+        "notiz": notiz,
+    }
     if schlaf_h is not None:
         daten["schlaf_h"] = schlaf_h
+    if abgeschaltet is not None:
+        daten["abgeschaltet"] = abgeschaltet
     return _aufruf("POST", f"tag/{quote(datum, safe='')}/bewertung", daten)
 
 
@@ -183,10 +210,14 @@ def woche_abrufen(datum: str) -> str:
 
 @mcp.tool()
 def muster_abrufen(ziel: Literal["produktivitaet", "zufriedenheit"] = "produktivitaet") -> str:
-    """Vergleicht gute und schwache Tage (oberes gegen unteres Drittel, letzte 180 Tage) nach
-    der Zielgröße `ziel` und listet je Merkmal die Mittelwerte beider Gruppen, stärkster
-    Unterschied zuerst. Erst ab 14 bewerteten Tagen; davor kommt, wie viele Tage noch fehlen.
-    Das sind Unterschiede, keine Ursachen: als Hypothesen formulieren."""
+    """Wertet die letzten 180 Tage nach der Zielgröße `ziel` aus, in drei Stufen: (1) gute
+    gegen schwache Tage (oberes gegen unteres Drittel; je Merkmal Mittelwerte, Cliff's Delta
+    mit Intervall und "deutlich"), erst ab 14 bewerteten Tagen; (2) "korrelationen"
+    (Spearman, wochentagsbereinigt, Intervall, Mehrfachtest-Treffer, Autokorrelation), ab 30
+    Tagen; (3) "mehrfachmodell" (die fünf stärksten Merkmale einer gemeinsamen Regression),
+    ab 90 Tagen. Ist eine Stufe noch nicht erreicht, steht dort, wie viele Tage fehlen.
+    Das sind Unterschiede und Zusammenhänge, keine Ursachen: als Hypothesen formulieren,
+    Ursachen prüft man mit Experimenten."""
     return _aufruf("GET", "muster", abfrage={"ziel": ziel})
 
 

@@ -1,18 +1,27 @@
+import csv
+import random
 from datetime import date, datetime, timedelta
 from statistics import mean
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
-from .auswertung import MIN_TAGE, vergleich
+from .auswertung import (
+    MIN_TAGE,
+    MIN_TAGE_KORRELATION,
+    MIN_TAGE_MODELL,
+    korrelationen,
+    mehrfachmodell,
+    vergleich,
+)
 from .forms import BewertungForm, EintragForm, PlanblockForm, TokenForm
-from .merkmale import formatiere, tagesmerkmale
+from .merkmale import MERKMALE, formatiere, tagesmerkmale
 from .models import ApiToken, Eintrag, Kategorie, Messung, Planblock, Tagesbewertung
 from .plan import plan_vs_ist
 from .services import starte_eintrag, stoppe_eintrag
@@ -403,40 +412,80 @@ ZIELGROESSEN = {
 MUSTER_TAGE = 180
 
 
+BEWERTUNG_FELDER = (
+    "datum",
+    "produktivitaet",
+    "zufriedenheit",
+    "fortschritt",
+    "fortschritt_notiz",
+    "abgeschaltet",
+    "schlaf_h",
+    "notiz",
+)
+SCHLAF_FENSTER = 7  # Nächte (inklusive heute) für schlaf_schnitt_7
+SCHLAF_MIN_WERTE = 3
+MUSTER_SEED = 42  # fester Seed: dieselben Daten ergeben dieselbe Seite
+
+
+def _bewertungen(nutzer, von, bis):
+    """Bewertungen von..bis plus 6 Tage davor (für den Schlafschnitt) als dict nach Datum."""
+    return {
+        b["datum"]: b
+        for b in Tagesbewertung.objects.filter(
+            nutzer=nutzer, datum__range=(von - timedelta(days=SCHLAF_FENSTER - 1), bis)
+        ).values(*BEWERTUNG_FELDER)
+    }
+
+
+def _tage_mit_merkmalen(nutzer, datumsliste, bewertungen, jetzt):
+    """[(bewertung, merkmale)] zu den Tagen (aufsteigend), inklusive Kontext aus Vortagen."""
+    eintraege, messungen = _nach_tagen(nutzer, datumsliste[0], datumsliste[-1])
+    tage = []
+    for d in datumsliste:
+        m = tagesmerkmale(eintraege.get(d, []), messungen.get(d, []), jetzt)
+        b = bewertungen[d]
+        m["wochentag"] = d.weekday()
+        m["schlaf_h"] = float(b["schlaf_h"]) if b["schlaf_h"] is not None else None
+        schlaf = [
+            float(bewertungen[x]["schlaf_h"])
+            for x in (d - timedelta(days=j) for j in range(SCHLAF_FENSTER))
+            if x in bewertungen and bewertungen[x]["schlaf_h"] is not None
+        ]
+        m["schlaf_schnitt_7"] = mean(schlaf) if len(schlaf) >= SCHLAF_MIN_WERTE else None
+        m["fortschritt"] = None if b["fortschritt"] is None else float(b["fortschritt"])
+        vortag = bewertungen.get(d - timedelta(days=1))
+        m["produktivitaet_vortag"] = vortag["produktivitaet"] if vortag else None
+        m["abgeschaltet_vortag"] = vortag["abgeschaltet"] if vortag else None
+        tage.append((b, m))
+    return tage
+
+
 def _muster_kontext(nutzer, ziel, jetzt):
     """Auswertung für die Muster-Seite und die API; ``ziel`` muss in ZIELGROESSEN sein."""
     heute = tagesdatum(jetzt)
     von = heute - timedelta(days=MUSTER_TAGE - 1)
-    # Ein Tag früher, damit auch der Vortag des ersten Tages bekannt ist.
-    bewertungen = {
-        b["datum"]: b
-        for b in Tagesbewertung.objects.filter(
-            nutzer=nutzer, datum__range=(von - timedelta(days=1), heute)
-        ).values("datum", "produktivitaet", "zufriedenheit", "schlaf_h")
-    }
+    bewertungen = _bewertungen(nutzer, von, heute)
+    bewertete = sorted(d for d in bewertungen if d >= von)
     kontext = {
         "ziel": ziel,
         "ziel_label": ZIELGROESSEN[ziel],
         "ziele": ZIELGROESSEN,
         "tage_max": MUSTER_TAGE,
         "min_tage": MIN_TAGE,
+        "min_tage_korrelation": MIN_TAGE_KORRELATION,
+        "min_tage_modell": MIN_TAGE_MODELL,
+        "bewertet": len(bewertete),
     }
-    bewertete = sorted(d for d in bewertungen if d >= von)
+    if len(bewertete) < MIN_TAGE_MODELL:
+        kontext["modell_fehlend"] = MIN_TAGE_MODELL - len(bewertete)
+    if len(bewertete) < MIN_TAGE_KORRELATION:
+        kontext["korr_fehlend"] = MIN_TAGE_KORRELATION - len(bewertete)
     if len(bewertete) < MIN_TAGE:
         kontext["fehlend"] = MIN_TAGE - len(bewertete)
-        kontext["bewertet"] = len(bewertete)
         return kontext
 
-    eintraege, messungen = _nach_tagen(nutzer, bewertete[0], bewertete[-1])
-    tage = []
-    for d in bewertete:
-        m = tagesmerkmale(eintraege.get(d, []), messungen.get(d, []), jetzt)
-        b = bewertungen[d]
-        m["schlaf_h"] = float(b["schlaf_h"]) if b["schlaf_h"] is not None else None
-        vortag = bewertungen.get(d - timedelta(days=1))
-        m["produktivitaet_vortag"] = vortag["produktivitaet"] if vortag else None
-        tage.append((b, m))
-    ergebnis = vergleich(tage, ziel)
+    tage = _tage_mit_merkmalen(nutzer, bewertete, bewertungen, jetzt)
+    ergebnis = vergleich(tage, ziel, random.Random(MUSTER_SEED))
     ergebnis["zeilen"] = [
         {
             **z,
@@ -450,7 +499,19 @@ def _muster_kontext(nutzer, ziel, jetzt):
         ziel_gut=formatiere(ergebnis["ziel_gut"], "zahl"),
         ziel_schwach=formatiere(ergebnis["ziel_schwach"], "zahl"),
     )
+    if "korr_fehlend" not in kontext:
+        kontext["korr"] = korrelationen(tage, ziel, random.Random(MUSTER_SEED))
+    if "modell_fehlend" not in kontext:
+        kontext["modell"] = mehrfachmodell(tage, ziel)
     return kontext
+
+
+def _ki_balken(unten, oben, wert):
+    """Position von Intervall und Punkt auf einer Achse -1..+1 in Prozent (für die Darstellung)."""
+    if unten is None or oben is None:
+        return None
+    pct = lambda v: round((max(-1, min(1, v)) + 1) * 50, 1)  # noqa: E731
+    return {"links": pct(unten), "breite": round(pct(oben) - pct(unten), 1), "punkt": pct(wert)}
 
 
 @login_required
@@ -464,6 +525,14 @@ def muster(request):
         maximum = max(abs(z["gut"]), abs(z["schwach"])) or 1
         z["balken_gut"] = round(abs(z["gut"]) * 100 / maximum)
         z["balken_schwach"] = round(abs(z["schwach"]) * 100 / maximum)
+        z["ki"] = _ki_balken(z["ki_unten"], z["ki_oben"], z["delta"])
+    for z in kontext.get("korr", {}).get("zeilen", []):
+        z["ki"] = _ki_balken(z["ki_unten"], z["ki_oben"], z["r"])
+    modell = kontext.get("modell", {})
+    if modell.get("koeffizienten"):  # Balkenlänge relativ zum größten Koeffizienten
+        maximum = max(abs(k["koeff"]) for k in modell["koeffizienten"]) or 1
+        for k in modell["koeffizienten"]:
+            k["breite"] = round(abs(k["koeff"]) * 100 / maximum)
     kontext["verlauf"] = _verlauf(request.user, jetzt)
     return render(request, "tracking/muster.html", kontext)
 
@@ -506,6 +575,97 @@ def _verlauf(nutzer, jetzt):
         f"Zufriedenheit {_zahl_text(letzte_z)} von 10."
     )
     return verlauf
+
+
+# --- CSV-Export -------------------------------------------------------------------
+
+
+EXPORT_BEWERTUNG = ["produktivitaet", "zufriedenheit", "abgeschaltet", "fortschritt_notiz", "notiz"]
+
+
+def _csv_zelle(wert):
+    """Dezimalkomma für Excel (de); Text, der mit = + - @ beginnt, wird entschärft."""
+    if wert is None:
+        return ""
+    if isinstance(wert, bool):
+        return int(wert)
+    if isinstance(wert, float):
+        return f"{wert:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+    if isinstance(wert, str) and wert[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + wert
+    return wert
+
+
+def _csv_antwort(dateiname, kopf, zeilen):
+    """UTF-8 mit BOM (Excel erkennt sonst die Umlaute nicht), Semikolon als Trenner."""
+    antwort = HttpResponse(content_type="text/csv; charset=utf-8")
+    antwort["Content-Disposition"] = f'attachment; filename="{dateiname}"'
+    antwort.write("\ufeff")
+    schreiber = csv.writer(antwort, delimiter=";", lineterminator="\r\n")
+    schreiber.writerow(kopf)
+    for zeile in zeilen:
+        schreiber.writerow([_csv_zelle(w) for w in zeile])
+    return antwort
+
+
+@login_required
+def export_tage(request):
+    """Eine Zeile je bewertetem Tag: Merkmale und Bewertungsfelder (Score vor Statistik)."""
+    jetzt = timezone.now()
+    datums = sorted(
+        Tagesbewertung.objects.filter(nutzer=request.user).values_list("datum", flat=True)
+    )
+    # Uhrzeiten sind Minuten seit Mitternacht des Tages (nach Mitternacht über 1440)
+    kopf = ["datum", "wochentag"] + [k + "_min" if f == "uhrzeit" else k for k, _, f in MERKMALE]
+    kopf += EXPORT_BEWERTUNG
+    zeilen = []
+    if datums:
+        bewertungen = _bewertungen(request.user, datums[0], datums[-1])
+        for b, m in _tage_mit_merkmalen(request.user, datums, bewertungen, jetzt):
+            zeilen.append(
+                [b["datum"].isoformat(), m["wochentag"]]
+                + [m.get(k) for k, _, _ in MERKMALE]
+                + [b[f] for f in EXPORT_BEWERTUNG]
+            )
+    return _csv_antwort("tage.csv", kopf, zeilen)
+
+
+@login_required
+def export_eintraege(request):
+    """Alle Einträge des Nutzers, älteste zuerst."""
+    kopf = [
+        "tag",
+        "start",
+        "ende",
+        "dauer_min",
+        "kategorie",
+        "art",
+        "notiz",
+        "abgeschlossen",
+        "unterbrochen",
+    ]
+
+    def zeilen():
+        eintraege = (
+            Eintrag.objects.filter(nutzer=request.user)
+            .select_related("kategorie")
+            .order_by("start")
+        )
+        for e in eintraege:
+            start, ende = timezone.localtime(e.start), e.ende and timezone.localtime(e.ende)
+            yield [
+                tagesdatum(e.start).isoformat(),
+                start.strftime("%Y-%m-%d %H:%M:%S"),
+                ende.strftime("%Y-%m-%d %H:%M:%S") if ende else None,
+                round((e.ende - e.start).total_seconds() / 60, 1) if e.ende else None,
+                e.kategorie.name,
+                e.kategorie.art,
+                e.notiz,
+                e.abgeschlossen,
+                e.unterbrochen,
+            ]
+
+    return _csv_antwort("eintraege.csv", kopf, zeilen())
 
 
 # --- Plan vs. Ist (Wochenkalender) ---------------------------------------------

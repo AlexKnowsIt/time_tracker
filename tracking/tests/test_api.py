@@ -252,11 +252,13 @@ def test_bewertung_anlegen_aktualisieren_und_merkmale(api, nutzer, kat):
         ende=lokal(2026, 11, 10, 10, 30),
     )
     antwort = api.post(
-        f"tag/{tag}/bewertung", {"produktivitaet": 7, "zufriedenheit": 6, "schlaf_h": 7.5}
+        f"tag/{tag}/bewertung",
+        {"produktivitaet": 7, "zufriedenheit": 6, "fortschritt": True, "schlaf_h": 7.5},
     )
     assert antwort.status_code == 201 and antwort.json()["bewertung"]["schlaf_h"] == 7.5
     antwort = api.post(
-        f"tag/{tag}/bewertung", {"produktivitaet": 8, "zufriedenheit": 9, "notiz": "gut"}
+        f"tag/{tag}/bewertung",
+        {"produktivitaet": 8, "zufriedenheit": 9, "fortschritt": False, "notiz": "gut"},
     )
     assert antwort.status_code == 200
     b = Tagesbewertung.objects.get(nutzer=nutzer)

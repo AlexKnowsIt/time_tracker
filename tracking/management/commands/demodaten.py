@@ -1,7 +1,13 @@
 """Testdaten mit eingebautem Muster, damit „Muster“ etwas zu zeigen hat.
 
-Eingebaut: frühe erste Pause, lange Deep-Work-Blöcke und mehr Wasser erhöhen die Produktivität;
-mehr Pausen und weniger Kategoriewechsel erhöhen die Zufriedenheit. Dazu Rauschen.
+Eingebaut (alles plus Rauschen):
+- Produktivität: frühe erste Pause, lange Deep-Work-Blöcke und mehr Wasser steigern sie,
+  unterbrochene Arbeitsblöcke und Wochenenden senken sie, gut geschlafene Nächte heben sie leicht.
+- Zufriedenheit: mehr Pausen, weniger Kategoriewechsel und Fortschritt heben sie.
+- Fortschritt hängt mit langen Deep-Work-Blöcken zusammen.
+- Ein später letzter Kaffee senkt den Schlaf der folgenden Nacht; früher Feierabend hilft beim
+  Abschalten, und gutes Abschalten hebt den Schlaf.
+Werktage sind immer dabei, Wochenenden nur manchmal (damit es genug bewertete Tage gibt).
 """
 
 import random
@@ -20,6 +26,28 @@ from tracking.zeit import tagesdatum
 def _zu_eins(wert, mitte, halbe_breite):
     """Skaliert auf grob -1..1."""
     return (wert - mitte) / halbe_breite
+
+
+ARBEIT = {"Deep Work", "Mails", "Meetings", "Organisation"}
+FORTSCHRITTE = [
+    "Konzept fertig gestellt",
+    "Schwieriges Problem gelöst",
+    "Entwurf abgegeben",
+    "Lange offene Aufgabe erledigt",
+    "Plan für die Woche steht",
+]
+
+
+def _laengster_deepwork(plan):
+    """Längster Deep-Work-Block in Minuten (direkt anschließende Einträge zählen zusammen)."""
+    laengster = aktuell = ende = 0
+    for name, von, bis in plan:
+        if name != "Deep Work":
+            continue
+        aktuell = aktuell + bis - von if von == ende else bis - von
+        ende = bis
+        laengster = max(laengster, aktuell)
+    return laengster
 
 
 def _tagesplan(rng):
@@ -76,7 +104,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("username")
-        parser.add_argument("--tage", type=int, default=42, help="Zeitraum bis gestern")
+        parser.add_argument("--tage", type=int, default=120, help="Zeitraum bis gestern")
         parser.add_argument("--seed", type=int, default=1)
 
     def handle(self, *args, username, tage, seed, **options):
@@ -105,20 +133,36 @@ class Command(BaseCommand):
                     datetime.combine(tag, time(0)) + timedelta(minutes=minuten)
                 )
 
+            kaffee_vortag, abgeschaltet_vortag = None, None  # wirken auf die folgende Nacht
             for i in range(tage):
                 tag = gestern - timedelta(days=tage - 1 - i)
-                if tag.weekday() >= 5:
+                wochenende = tag.weekday() >= 5
+                if wochenende and rng.random() > 0.35:
                     continue
                 plan, start, ende, erste_pause, pausen_n, deep_mittel, zerstueck = _tagesplan(rng)
+                unterbrechung = rng.random() * 0.45  # Neigung zu Unterbrechungen an diesem Tag
+                arbeit_n = unterbrochen_n = 0
                 for name, von, bis in plan:
+                    arbeit = name in ARBEIT
+                    unterbrochen = arbeit and rng.random() < unterbrechung * (
+                        1 if name == "Deep Work" else 0.5
+                    )
+                    abgeschlossen = None
+                    if arbeit and rng.random() < 0.6:
+                        abgeschlossen = rng.random() < 0.45 + 0.4 * (bis - von >= 45)
+                    arbeit_n += arbeit
+                    unterbrochen_n += unterbrochen
                     eintraege.append(
                         Eintrag(
                             nutzer=nutzer,
                             kategorie=kategorien[name],
                             start=zeit(tag, von),
                             ende=zeit(tag, bis),
+                            abgeschlossen=abgeschlossen,
+                            unterbrochen=unterbrochen,
                         )
                     )
+                anteil_unterbrochen = unterbrochen_n / arbeit_n if arbeit_n else 0
                 glaeser = rng.randint(3, 12)
                 for _ in range(glaeser):
                     messungen.append(
@@ -129,33 +173,70 @@ class Command(BaseCommand):
                             menge=250,
                         )
                     )
+                kaffee_n = rng.choice([0, 1, 2, 2, 3, 4])
+                letzter_kaffee = rng.randrange(9 * 60, 18 * 60 + 1, 15) if kaffee_n else None
+                for k in range(kaffee_n):
+                    uhr = letzter_kaffee if k == 0 else rng.randrange(8 * 60, letzter_kaffee + 1)
+                    messungen.append(
+                        Messung(
+                            nutzer=nutzer,
+                            zeitpunkt=zeit(tag, uhr),
+                            typ=Messung.Typ.KAFFEE,
+                            menge=1,
+                        )
+                    )
+                # Nacht vor dem Tag: später Kaffee und schlechtes Abschalten am Vortag kosten Schlaf
+                schlaf = 7.3 + rng.gauss(0, 0.5)
+                if kaffee_vortag is not None:
+                    schlaf -= 1.4 * _zu_eins(kaffee_vortag, 15 * 60, 4 * 60)
+                if abgeschaltet_vortag is not None:
+                    schlaf += 0.3 * (abgeschaltet_vortag - 3)
+                schlaf = min(10, max(4, round(schlaf * 2) / 2))
+                laengster = _laengster_deepwork(plan)
+                fortschritt = rng.random() < (0.85 if laengster >= 75 else 0.25)
                 produktiv = (
                     5.5
                     + 1.8 * _zu_eins(12 * 60, erste_pause, 90)  # früh = gut
                     + 1.6 * _zu_eins(deep_mittel, 72, 38)
                     + 1.0 * _zu_eins(glaeser, 7.5, 4.5)
+                    - 5.0 * (anteil_unterbrochen - 0.15)  # Unterbrechungen senken
+                    + 0.6 * _zu_eins(schlaf, 7, 1.2)
+                    - (1.2 if wochenende else 0)
                     + rng.gauss(0, 0.8)
                 )
                 zufrieden = (
                     5.5
                     + 1.2 * _zu_eins(pausen_n, 2.5, 1.5)
                     + 1.8 * _zu_eins(0.5, zerstueck, 0.5)  # weniger Wechsel = gut
+                    + (1.3 if fortschritt else -0.9)
                     + 0.15 * (produktiv - 5.5)
                     + rng.gauss(0, 0.8)
                 )
+                abgeschaltet = None
+                if rng.random() < 0.8:
+                    abgeschaltet = round(
+                        3.4 - 1.2 * _zu_eins(ende, 17 * 60, 90) + rng.gauss(0, 0.7)
+                    )
+                    abgeschaltet = min(5, max(1, abgeschaltet))
                 bewertungen.append(
                     Tagesbewertung(
                         nutzer=nutzer,
                         datum=tag,
                         produktivitaet=min(10, max(1, round(produktiv))),
                         zufriedenheit=min(10, max(1, round(zufrieden))),
-                        schlaf_h=rng.randrange(11, 18) / 2,
+                        fortschritt=fortschritt,
+                        fortschritt_notiz=rng.choice(FORTSCHRITTE)
+                        if fortschritt and rng.random() < 0.5
+                        else "",
+                        abgeschaltet=abgeschaltet,
+                        schlaf_h=schlaf,
                     )
                 )
+                kaffee_vortag, abgeschaltet_vortag = letzter_kaffee, abgeschaltet
             Eintrag.objects.bulk_create(eintraege)
             Messung.objects.bulk_create(messungen)
             Tagesbewertung.objects.bulk_create(bewertungen)
         self.stdout.write(
-            f"{len(bewertungen)} Werktage bis {gestern:%d.%m.%Y}: {len(eintraege)} Einträge, "
-            f"{len(messungen)} Wasser-Messungen, {len(bewertungen)} Bewertungen."
+            f"{len(bewertungen)} Tage bis {gestern:%d.%m.%Y}: {len(eintraege)} Einträge, "
+            f"{len(messungen)} Messungen (Wasser, Kaffee), {len(bewertungen)} Bewertungen."
         )

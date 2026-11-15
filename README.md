@@ -39,13 +39,17 @@ Desktop (ab 900 px Seitenleiste):
   nicht erfasst), Einträge bearbeiten, löschen, nachtragen, Messungen. Überschneidungen werden
   abgelehnt.
 - **Abschluss** (`/tag/JJJJ-MM-TT/abschluss/`): „Wie produktiv war der Tag?“ und „Wie zufrieden
-  bist du mit dem Tag?“ (je 1–10), Schlaf, Notiz. Erst danach erscheint die Zusammenfassung.
+  bist du mit dem Tag?“ (je 1–10), „Fortschritt gemacht?“ (Ja/Nein), Abschalten (1–5, optional),
+  Schlaf, Notiz. Erst danach erscheint die Zusammenfassung.
 - **Woche** (`/woche/`, `/woche/JJJJ-MM-TT/`): Montag bis Sonntag, je Tag Zeitleiste, Deep-Work-
   Zeit und beide Scores.
 - **Muster** (`/muster/?ziel=produktivitaet|zufriedenheit`): ab 14 bewerteten Tagen (letzte
   180 Tage) Vergleich des oberen und unteren Drittels nach der gewählten Zielgröße, je Merkmal
-  Ø gute gegen Ø schwache Tage, stärkster Unterschied oben. Davor: „Noch N bewertete Tage bis
-  zur ersten Auswertung“.
+  Ø gute gegen Ø schwache Tage mit Cliff's Delta und Intervall, stärkster Unterschied oben.
+  Ab 30 Tagen Korrelationen (Spearman, wochentagsbereinigt, Block-Bootstrap, Mehrfachtest nach
+  Benjamini-Hochberg), ab 90 Tagen ein Mehrfachmodell (Ridge, Top 5, explorativ). Davor steht
+  je Abschnitt, wie viele Tage noch fehlen. Alles sind Hypothesen, keine Ursachen; Grundlage:
+  `docs/forschung.md`.
 - **Plan** (`/plan/`, `?datum=JJJJ-MM-TT`): Wochenkalender (FullCalendar 6 per CDN, mobil
   Tagesansicht). Planblöcke per Ziehen anlegen, per Drag & Drop verschieben, Klick = bearbeiten
   oder löschen; erfasste Einträge erscheinen gestreift daneben. Planblöcke überschneiden sich
@@ -54,7 +58,10 @@ Desktop (ab 900 px Seitenleiste):
 - **Kategorien** haben eine Art: Deep Work, Shallow Work, Organisation, Pause, Freizeit.
   Pflege im Admin; `standardkategorien` legt Deep Work, Mails, Meetings, Organisation, Pause,
   Sport und Freizeit an.
-- **Einstellungen** (`/einstellungen/`, Link im Kopf): API-Tokens erzeugen, auflisten, widerrufen.
+- **Einstellungen** (`/einstellungen/`, Link im Kopf): API-Tokens erzeugen, auflisten, widerrufen,
+  CSV-Export (`/export.csv`: eine Zeile je bewertetem Tag mit allen Merkmalen, Uhrzeiten als
+  Minuten seit Mitternacht; `/export-eintraege.csv`: alle Einträge; Semikolon, UTF-8 mit BOM,
+  Dezimalkomma).
 - **API und MCP** (`/api/v1/`, `mcp_server/`): KI-Assistenten bedienen die Zeiterfassung, siehe
   „KI-Assistenten (MCP)“.
 - Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) kommen per CDN mit fester Version.
@@ -131,13 +138,15 @@ JSON rein und raus, Fehler als `{"fehler": …, "felder": {…}}`; Session-Login
 ## Testdaten
 
 ```
-uv run python manage.py demodaten demo [--tage 42] [--seed 1]
+uv run python manage.py demodaten demo [--tage 120] [--seed 1]
 ```
 
 Legt den Nutzer an, falls er fehlt (Passwort `demo`, wird ausgegeben), dazu die Standardkategorien
-und für jeden Werktag bis gestern Einträge, Wasser-Messungen und beide Bewertungen. Eingebautes
-Muster: frühe erste Pause, lange Deep-Work-Blöcke und mehr Wasser erhöhen die Produktivität;
-mehr Pausen und weniger Wechsel erhöhen die Zufriedenheit (plus Rauschen). Mit gleichem `--seed`
+und für jeden Werktag (Wochenenden manchmal) bis gestern Einträge, Wasser- und Kaffee-Messungen
+und die Bewertungen. Eingebautes Muster: frühe erste Pause, lange Deep-Work-Blöcke und mehr
+Wasser erhöhen die Produktivität, unterbrochene Blöcke senken sie; mehr Pausen, weniger Wechsel
+und Fortschritt (hängt mit langen Deep-Work-Blöcken zusammen) erhöhen die Zufriedenheit; später
+Kaffee kostet Schlaf der folgenden Nacht (plus Rauschen). Mit gleichem `--seed`
 immer gleiche Daten. Der Befehl bricht ab, wenn der Nutzer schon Einträge, Messungen oder
 Bewertungen hat; echte und Testdaten werden nie gemischt. Am besten mit einer eigenen Datenbank
 (`DJANGO_DB_PATH=/tmp/demo.sqlite3`).

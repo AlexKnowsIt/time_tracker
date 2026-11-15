@@ -310,12 +310,14 @@ button.kachel:active { transform: scale(.97); }
 /* ---------- Formulare ---------- */
 .formular .feld, .feld { border: 0; padding: 0; margin: 0 0 var(--s5); min-width: 0; }
 .formular label, .feld legend { display: block; font-weight: 600; font-size: .9375rem; margin-bottom: var(--s2); padding: 0; }
-.formular input:not([type=radio]):not([type=hidden]), .formular select, .formular textarea {
+.formular input:not([type=radio]):not([type=checkbox]):not([type=hidden]), .formular select, .formular textarea {
   width: 100%; min-height: 48px; font: inherit; color: var(--text); padding: var(--s3) var(--s4); background: var(--flaeche);
   border: 1px solid var(--eingabe-rand); border-radius: var(--r-m); -webkit-appearance: none; appearance: none; }
 .formular textarea { min-height: 96px; resize: vertical; }
 .formular select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a91a0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
 .formular input:focus-visible, .formular select:focus-visible, .formular textarea:focus-visible { outline: 3px solid var(--fokus); outline-offset: 1px; border-color: transparent; }
+.feld-haken label { display: flex; align-items: center; gap: var(--s3); font-weight: 500; min-height: 48px; cursor: pointer; }
+.feld-haken input { width: 24px; height: 24px; margin: 0; accent-color: var(--akzent); flex: none; }
 .feld small { display: block; margin-top: var(--s1); }
 .fehler, .errorlist { color: var(--gefahr); font-weight: 600; font-size: .875rem; list-style: none; padding: 0; margin: var(--s2) 0 0; }
 .fehler ul { list-style: none; padding: 0; margin: 0; }
@@ -417,3 +419,34 @@ dialog h2 { font-size: 1.25rem; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Muster: Statuszeile, Konfidenzintervall, Korrelationen, Modell ---------- */
+.status { margin: 0 0 var(--s3); padding: var(--s3) var(--s4); background: var(--flaeche-2); border-radius: var(--r-m); font-size: .9375rem; color: var(--text-2); }
+.vergleich-delta { display: flex; align-items: center; gap: var(--s3); margin: var(--s3) 0 0; font-size: .8125rem; color: var(--text-2); }
+.vergleich-delta .ki { flex: 1; }
+.vergleich-delta .delta-text { min-width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+/* Achse -1..+1 mit Nulllinie in der Mitte; Balken = 95-%-Intervall, Punkt = Schätzwert */
+.ki { position: relative; height: 12px; }
+.ki::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--linie); }
+.ki::after { content: ""; position: absolute; left: 50%; top: 0; width: 2px; height: 12px; margin-left: -1px; background: var(--text-2); }
+.ki-balken { position: absolute; top: 3px; height: 6px; border-radius: var(--r-voll); background: color-mix(in srgb, var(--akzent) 35%, var(--flaeche)); min-width: 2px; }
+.ki-punkt { position: absolute; top: 1px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--akzent); z-index: 1; }
+.ki.leise .ki-balken { background: var(--linie); }
+.ki.leise .ki-punkt { background: var(--text-2); }
+.badge { display: inline-block; padding: 1px var(--s2); border-radius: var(--r-voll); font-size: .75rem; font-weight: 650; background: var(--akzent-weich); color: var(--akzent); white-space: nowrap; }
+.badge.neutral { background: var(--flaeche-2); color: var(--text-2); }
+.korr { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s2); }
+.korr li { display: grid; grid-template-columns: minmax(0, 1.4fr) 3.5rem minmax(0, 1fr); align-items: center; gap: var(--s3); background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--r-m); padding: var(--s2) var(--s3); }
+.korr li.leise { background: transparent; box-shadow: none; }
+.korr-label { margin: 0; font-weight: 600; font-size: .9375rem; overflow-wrap: anywhere; }
+.korr li.leise .korr-label { font-weight: 500; color: var(--text-2); }
+.korr-r { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.korr-badges { grid-column: 1 / -1; display: flex; gap: var(--s2); flex-wrap: wrap; }
+.korr-badges:empty { display: none; }
+.fussnoten { font-size: .8125rem; color: var(--text-2); margin: var(--s3) 0 0; padding-left: var(--s4); }
+.fussnoten li { margin-bottom: var(--s1); }
+.modell { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s2); }
+.modell li { display: grid; grid-template-columns: minmax(0, 1fr) 4rem; gap: var(--s1) var(--s3); align-items: center; background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--r-m); padding: var(--s2) var(--s3); }
+.modell-balken { grid-column: 1 / -1; height: 6px; border-radius: var(--r-voll); background: var(--akzent); }
+.modell-balken.minus { background: var(--schwach); }
+.modell-wert { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }

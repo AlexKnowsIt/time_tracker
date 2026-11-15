@@ -47,6 +47,8 @@ urlpatterns = [
     path("plan/<int:pk>/", views.plan_speichern, name="plan_bearbeiten"),
     path("plan/<int:pk>/loeschen/", views.plan_loeschen, name="plan_loeschen"),
     path("muster/", views.muster, name="muster"),
+    path("export.csv", views.export_tage, name="export_tage"),
+    path("export-eintraege.csv", views.export_eintraege, name="export_eintraege"),
     path("einstellungen/", views.einstellungen, name="einstellungen"),
     path(
         "einstellungen/token/<int:pk>/widerrufen/", views.token_widerrufen, name="token_widerrufen"

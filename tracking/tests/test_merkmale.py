@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tracking.merkmale import MERKMALE, formatiere, tagesmerkmale
+from tracking.merkmale import _KONTEXT, MERKMALE, formatiere, tagesmerkmale
 
 BERLIN = ZoneInfo("Europe/Berlin")
 TAG = date(2026, 11, 10)
@@ -34,7 +34,7 @@ def wasser(h, menge=250):
 def test_leerer_tag_alles_none():
     m = tagesmerkmale([], [], JETZT)
     assert all(v is None for v in m.values())
-    assert {k for k, _, _ in MERKMALE} - {"schlaf_h", "produktivitaet_vortag"} <= set(m)
+    assert {k for k, _, _ in MERKMALE} - _KONTEXT <= set(m)
 
 
 def test_beispieltag():
@@ -138,3 +138,59 @@ def test_arbeit_ueber_mitternacht_gehoert_zum_tag_des_starts():
 )
 def test_formatiere(wert, format, text):
     assert formatiere(wert, format) == text
+
+
+def kaffee(h, m=0):
+    return SimpleNamespace(typ="kaffee", menge=1, zeitpunkt=zeit(h, m))
+
+
+def block(kat, von, bis, **flags):
+    return SimpleNamespace(kategorie=kat, start=zeit(*von), ende=zeit(*bis), **flags)
+
+
+def test_neue_pausen_und_kaffee_merkmale():
+    eintraege = [
+        e(DEEP, (8, 0), (10, 0)),
+        e(PAUSE, (10, 0), (10, 10)),
+        e(DEEP, (10, 10), (11, 10)),
+        e(PAUSE, (11, 10), (11, 40)),
+    ]
+    messungen = [
+        wasser(9),
+        wasser(11),
+        wasser(12),
+        wasser(15),
+        wasser(17),
+        kaffee(8, 30),
+        kaffee(15, 45),
+    ]
+    m = tagesmerkmale(eintraege, messungen, JETZT)
+    assert m["pausen_je_deepwork_h"] == pytest.approx(2 / 3)  # 2 Pausen auf 3 Deep-Work-Stunden
+    assert m["mittlere_pause_min"] == 20
+    assert m["letzter_kaffee"] == 15 * 60 + 45
+    assert (m["wasser_vor_12_ml"], m["wasser_12_16_ml"], m["wasser_bis_14_ml"]) == (500, 500, 750)
+
+
+def test_ohne_kaffee_pause_deepwork_sind_die_neuen_merkmale_none():
+    m = tagesmerkmale([e(MAILS, (8, 0), (9, 0))], [], JETZT)
+    assert m["letzter_kaffee"] is None and m["mittlere_pause_min"] is None
+    assert m["pausen_je_deepwork_h"] is None  # keine Deep-Work-Zeit: nicht teilbar
+    assert m["wasser_vor_12_ml"] is None
+
+
+def test_anteil_unterbrochen_und_abgeschlossen():
+    eintraege = [
+        block(DEEP, (8, 0), (9, 0), unterbrochen=True, abgeschlossen=True),
+        block(DEEP, (9, 0), (10, 0), unterbrochen=False, abgeschlossen=False),
+        block(MAILS, (10, 0), (10, 30), unterbrochen=False, abgeschlossen=None),
+        block(MAILS, (10, 30), (11, 0), unterbrochen=False, abgeschlossen=None),
+        block(PAUSE, (11, 0), (11, 15), unterbrochen=True, abgeschlossen=True),  # zählt nicht
+    ]
+    m = tagesmerkmale(eintraege, [], JETZT)
+    assert m["anteil_unterbrochen"] == pytest.approx(1 / 4)  # 4 Arbeitsblöcke, einer unterbrochen
+    assert m["anteil_abgeschlossen"] == pytest.approx(1 / 2)  # nur die 2 beantworteten
+    # Ohne beantwortete Blöcke: None statt 0
+    nur_offen = tagesmerkmale(
+        [block(DEEP, (8, 0), (9, 0), unterbrochen=False, abgeschlossen=None)], [], JETZT
+    )
+    assert nur_offen["anteil_abgeschlossen"] is None and nur_offen["anteil_unterbrochen"] == 0

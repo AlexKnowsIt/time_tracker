@@ -70,14 +70,39 @@ class PlanblockForm(forms.ModelForm):
         return daten
 
 
+class JaNeinFeld(forms.TypedChoiceField):
+    """Ja/Nein als bool; leer = None (nur ohne required). Nimmt auch JSON-Werte der API an."""
+
+    _JA, _NEIN = {"true", "1", "ja"}, {"false", "0", "nein"}
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            choices=[("True", "Ja"), ("False", "Nein")],
+            coerce=lambda wert: wert == "True",
+            empty_value=None,
+            **kwargs,
+        )
+
+    def to_python(self, value):
+        text = str(value).strip().lower() if value is not None else ""
+        value = "True" if text in self._JA else "False" if text in self._NEIN else value
+        return super().to_python(value)
+
+
 class EintragForm(forms.ModelForm):
     start = _dt_feld("Start")
     ende = _dt_feld("Ende")
+    abgeschlossen = JaNeinFeld(
+        label="Aufgabe abgeschlossen?",
+        required=False,
+        widget=forms.Select(choices=[("", "Keine Angabe"), ("True", "Ja"), ("False", "Nein")]),
+    )
 
     class Meta:
         model = Eintrag
-        fields = ["kategorie", "start", "ende", "notiz"]
+        fields = ["kategorie", "start", "ende", "notiz", "abgeschlossen", "unterbrochen"]
         widgets = {"notiz": forms.Textarea(attrs={"rows": 2})}
+        labels = {"unterbrochen": "Unterbrochen (z. B. durch Nachricht oder Anruf)"}
 
     def __init__(self, *args, nutzer, **kwargs):
         super().__init__(*args, **kwargs)
@@ -118,15 +143,39 @@ def _skala(label):
 class BewertungForm(forms.ModelForm):
     produktivitaet = _skala("Wie produktiv war der Tag? (1–10)")
     zufriedenheit = _skala("Wie zufrieden bist du mit dem Tag? (1–10)")
+    fortschritt = JaNeinFeld(
+        label="Hast du heute bei etwas Wichtigem Fortschritt gemacht?",
+        widget=forms.RadioSelect,
+    )
+    abgeschaltet = forms.TypedChoiceField(
+        label="Wie gut konntest du nach der Arbeit abschalten? (1–5, optional)",
+        choices=[(i, str(i)) for i in range(1, 6)],
+        coerce=int,
+        empty_value=None,
+        required=False,
+        widget=forms.RadioSelect,
+    )
 
     class Meta:
         model = Tagesbewertung
-        fields = ["produktivitaet", "zufriedenheit", "schlaf_h", "notiz"]
+        fields = [
+            "produktivitaet",
+            "zufriedenheit",
+            "fortschritt",
+            "fortschritt_notiz",
+            "abgeschaltet",
+            "schlaf_h",
+            "notiz",
+        ]
         widgets = {
             "notiz": forms.Textarea(attrs={"rows": 3}),
             "schlaf_h": forms.NumberInput(attrs={"step": "0.5", "min": "0", "max": "24"}),
+            "fortschritt_notiz": forms.TextInput(attrs={"placeholder": "Was genau? (optional)"}),
         }
-        labels = {"schlaf_h": "Schlaf (Stunden, optional)"}
+        labels = {
+            "schlaf_h": "Schlaf (Stunden, optional)",
+            "fortschritt_notiz": "Fortschritt: Was?",
+        }
 
 
 class TokenForm(forms.ModelForm):

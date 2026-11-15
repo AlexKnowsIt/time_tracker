@@ -12,12 +12,14 @@ from .zeit import dauer_text, tagesdatum
 
 KURZ_MIN = 15
 WASSER_BIS_MIN = 14 * 60
+WASSER_VOR_12_MIN, WASSER_BIS_16_MIN = 12 * 60, 16 * 60
 
 DEEPWORK, SHALLOWWORK, PAUSE, FREIZEIT = "deepwork", "shallowwork", "pause", "freizeit"
 ARBEIT = (DEEPWORK, SHALLOWWORK, "organisation")
 
 # (Schlüssel, Label, Format); Format: dauer | uhrzeit | zahl | ml | prozent
-# Die letzten beiden sind Kontext und kommen aus der Bewertung, nicht aus tagesmerkmale().
+# Die als _KONTEXT markierten kommen aus Bewertung und Vortagen (views.py), nicht aus
+# tagesmerkmale(). Eintrag-ähnliche Objekte dürfen ``abgeschlossen``/``unterbrochen`` haben.
 MERKMALE = [
     ("deepwork_min", "Deep Work gesamt", "dauer"),
     ("shallowwork_min", "Shallow Work gesamt", "dauer"),
@@ -36,10 +38,26 @@ MERKMALE = [
     ("laengste_strecke_ohne_pause_min", "Längste Strecke ohne Pause", "dauer"),
     ("wasser_ml", "Wasser gesamt", "ml"),
     ("wasser_bis_14_ml", "Wasser bis 14 Uhr", "ml"),
+    ("pausen_je_deepwork_h", "Pausen je Deep-Work-Stunde", "zahl"),
+    ("mittlere_pause_min", "Mittlere Pausenlänge", "dauer"),
+    ("letzter_kaffee", "Letzter Kaffee", "uhrzeit"),
+    ("wasser_vor_12_ml", "Wasser vor 12 Uhr", "ml"),
+    ("wasser_12_16_ml", "Wasser 12 bis 16 Uhr", "ml"),
+    ("anteil_unterbrochen", "Anteil unterbrochener Arbeitsblöcke", "prozent"),
+    ("anteil_abgeschlossen", "Anteil abgeschlossener Arbeitsblöcke", "prozent"),
     ("schlaf_h", "Schlaf (Stunden)", "zahl"),
+    ("schlaf_schnitt_7", "Schlaf-Schnitt der letzten 7 Nächte", "zahl"),
     ("produktivitaet_vortag", "Produktivität des Vortags", "zahl"),
+    ("abgeschaltet_vortag", "Abschalten am Vortag (1–5)", "zahl"),
+    ("fortschritt", "Tage mit Fortschritt", "prozent"),
 ]
-_KONTEXT = {"schlaf_h", "produktivitaet_vortag"}
+_KONTEXT = {
+    "schlaf_h",
+    "schlaf_schnitt_7",
+    "produktivitaet_vortag",
+    "abgeschaltet_vortag",
+    "fortschritt",
+}
 _SCHLUESSEL = [k for k, _, _ in MERKMALE if k not in _KONTEXT] + ["wochentag"]
 
 
@@ -68,7 +86,7 @@ def tagesmerkmale(eintraege, messungen, jetzt):
         beginn = e.start if cursor is None else max(e.start, cursor)
         ende = e.ende or jetzt
         if ende > beginn:
-            teile.append((beginn, ende, e.kategorie))
+            teile.append((beginn, ende, e.kategorie, e))
             cursor = ende
 
     zeitpunkte = [t[0] for t in teile] + [x.zeitpunkt for x in messungen]
@@ -87,9 +105,15 @@ def tagesmerkmale(eintraege, messungen, jetzt):
     wasser = [x for x in messungen if x.typ == "wasser_ml"]
     if wasser:  # ponytail: ohne Messung None statt 0, vergessenes Erfassen ist nicht Durst
         ergebnis["wasser_ml"] = sum(x.menge for x in wasser)
-        ergebnis["wasser_bis_14_ml"] = sum(
-            x.menge for x in wasser if minuten(x.zeitpunkt) < WASSER_BIS_MIN
-        )
+        for key, von, bis in (
+            ("wasser_bis_14_ml", 0, WASSER_BIS_MIN),
+            ("wasser_vor_12_ml", 0, WASSER_VOR_12_MIN),
+            ("wasser_12_16_ml", WASSER_VOR_12_MIN, WASSER_BIS_16_MIN),
+        ):
+            ergebnis[key] = sum(x.menge for x in wasser if von <= minuten(x.zeitpunkt) < bis)
+    kaffee = [minuten(x.zeitpunkt) for x in messungen if x.typ == "kaffee"]
+    if kaffee:
+        ergebnis["letzter_kaffee"] = max(kaffee)
     if not teile:
         return ergebnis
 
@@ -107,6 +131,7 @@ def tagesmerkmale(eintraege, messungen, jetzt):
         pausen_anzahl=len(pausen),
         pausen_min=sum(dauer(t) for t in pausen),
         erste_pause=minuten(pausen[0][0]) if pausen else None,
+        mittlere_pause_min=sum(dauer(t) for t in pausen) / len(pausen) if pausen else None,
     )
 
     if arbeit:
@@ -120,6 +145,14 @@ def tagesmerkmale(eintraege, messungen, jetzt):
             if a[2].art in ARBEIT and b[2].art in ARBEIT and a[2] != b[2]
         )
         ergebnis["wechsel_pro_h"] = wechsel / stunden
+        ergebnis["anteil_unterbrochen"] = sum(
+            1 for t in arbeit if getattr(t[3], "unterbrochen", False)
+        ) / len(arbeit)
+        antworten = [
+            t[3].abgeschlossen for t in arbeit if getattr(t[3], "abgeschlossen", None) is not None
+        ]
+        if antworten:
+            ergebnis["anteil_abgeschlossen"] = sum(antworten) / len(antworten)
         # Eine Pause beendet die Strecke; Freizeit zählt weder dazu noch unterbricht sie.
         strecke = laengste = 0
         for t in teile:
@@ -139,6 +172,9 @@ def tagesmerkmale(eintraege, messungen, jetzt):
             bloecke.append([t[0], t[1]])
     laengen = [dauer(b) for b in bloecke]
     ergebnis["deepwork_bloecke"] = len(bloecke)
+    deep_h = ergebnis["deepwork_min"] / 60
+    if deep_h:
+        ergebnis["pausen_je_deepwork_h"] = len(pausen) / deep_h
     if laengen:
         ergebnis["laengster_deepwork_min"] = max(laengen)
         ergebnis["mittlerer_deepwork_min"] = sum(laengen) / len(laengen)

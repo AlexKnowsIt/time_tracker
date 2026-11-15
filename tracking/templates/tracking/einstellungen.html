@@ -44,6 +44,14 @@ Passwort: Wer es hat, kann deine Daten lesen und ändern.</p>
   <button class="btn btn-primaer btn-voll">Neues Token erzeugen</button>
 </form>
 
+<h2 class="abschnitt">Export</h2>
+<p class="klein text-lang">CSV für eigene Auswertungen (Semikolon, UTF-8, Dezimalkomma; öffnet direkt in Excel).
+Die Tage-Datei enthält eine Zeile je bewertetem Tag mit allen Merkmalen. Uhrzeiten sind Minuten seit Mitternacht.</p>
+<div class="knopfzeile">
+  <a class="btn btn-sekundaer" href="{% url 'export_tage' %}" download>Tage (export.csv)</a>
+  <a class="btn btn-sekundaer" href="{% url 'export_eintraege' %}" download>Einträge (export-eintraege.csv)</a>
+</div>
+
 <h2 class="abschnitt">Konto</h2>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}
   <button class="btn btn-sekundaer btn-voll">

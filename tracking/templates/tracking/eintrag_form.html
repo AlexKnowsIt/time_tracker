@@ -7,9 +7,10 @@
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="fehler" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   {% for feld in form %}
-  <div class="feld">
-    <label for="{{ feld.id_for_label }}">{{ feld.label }}</label>
-    {{ feld }}
+  <div class="feld{% if feld.field.widget.input_type == 'checkbox' %} feld-haken{% endif %}">
+    {% if feld.field.widget.input_type == 'checkbox' %}<label for="{{ feld.id_for_label }}">{{ feld }} {{ feld.label }}</label>
+    {% else %}<label for="{{ feld.id_for_label }}">{{ feld.label }}</label>
+    {{ feld }}{% endif %}
     {% if feld.errors %}<div class="fehler" role="alert">{{ feld.errors }}</div>{% endif %}
   </div>
   {% endfor %}

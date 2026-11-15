@@ -21,6 +21,7 @@
     <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.gesamt }}</span><span class="kennzahl-label">Erfasst gesamt</span></div>
     <div class="kennzahl"><span class="kennzahl-wert">{{ zusammenfassung.wasser_ml }}<small> ml</small></span><span class="kennzahl-label">Wasser</span></div>
   </div>
+  <p class="klein">Fortschritt gemacht: {% if zusammenfassung.bewertung.fortschritt is None %}keine Angabe{% elif zusammenfassung.bewertung.fortschritt %}ja{% else %}nein{% endif %}{% if zusammenfassung.bewertung.fortschritt_notiz %} ({{ zusammenfassung.bewertung.fortschritt_notiz }}){% endif %}{% if zusammenfassung.bewertung.abgeschaltet %} · Abschalten {{ zusammenfassung.bewertung.abgeschaltet }}/5{% endif %}</p>
   {% if zusammenfassung.arten %}
   <ul class="arten">
     {% for art, dauer in zusammenfassung.arten %}<li><span>{{ art }}</span><strong>{{ dauer }}</strong></li>{% endfor %}
@@ -76,6 +77,7 @@
       <strong>{{ z.eintrag.kategorie.name }}</strong>
       <span class="zeit">{{ z.eintrag.start|time:"H:i" }}–{% if z.eintrag.ende %}{{ z.eintrag.ende|time:"H:i" }}{% else %}läuft{% endif %} · {{ z.dauer }}</span>
       {% if z.eintrag.notiz %}<span class="klein">{{ z.eintrag.notiz }}</span>{% endif %}
+      {% if z.eintrag.unterbrochen or z.eintrag.abgeschlossen is not None %}<span class="klein">{% if z.eintrag.unterbrochen %}unterbrochen{% endif %}{% if z.eintrag.unterbrochen and z.eintrag.abgeschlossen is not None %} · {% endif %}{% if z.eintrag.abgeschlossen is not None %}{% if z.eintrag.abgeschlossen %}abgeschlossen{% else %}nicht abgeschlossen{% endif %}{% endif %}</span>{% endif %}
     </div>
     <a class="icon-knopf" href="{% url 'eintrag_bearbeiten' z.eintrag.pk %}" aria-label="Eintrag {{ z.eintrag.kategorie.name }} {{ z.eintrag.start|time:'H:i' }} bearbeiten">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></a>

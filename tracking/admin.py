@@ -12,7 +12,7 @@ class KategorieAdmin(admin.ModelAdmin):
 
 @admin.register(Eintrag)
 class EintragAdmin(admin.ModelAdmin):
-    list_display = ["kategorie", "start", "ende", "nutzer"]
+    list_display = ["kategorie", "start", "ende", "abgeschlossen", "unterbrochen", "nutzer"]
     list_filter = ["nutzer", "kategorie__art", "kategorie"]
     date_hierarchy = "start"
 
@@ -26,7 +26,15 @@ class MessungAdmin(admin.ModelAdmin):
 
 @admin.register(Tagesbewertung)
 class TagesbewertungAdmin(admin.ModelAdmin):
-    list_display = ["datum", "produktivitaet", "zufriedenheit", "schlaf_h", "nutzer"]
+    list_display = [
+        "datum",
+        "produktivitaet",
+        "zufriedenheit",
+        "fortschritt",
+        "abgeschaltet",
+        "schlaf_h",
+        "nutzer",
+    ]
     list_filter = ["nutzer"]
     date_hierarchy = "datum"
 
