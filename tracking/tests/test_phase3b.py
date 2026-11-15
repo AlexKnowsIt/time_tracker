@@ -3,7 +3,7 @@
 import io
 import json
 import random
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -953,7 +953,12 @@ def test_api_wochenbericht_ohne_daten_und_ohne_token(client, nutzer, token):
 # --- Demodaten ---------------------------------------------------------------------------
 
 
-def test_demodaten_experimente_plan_und_schlaf():
+def test_demodaten_experimente_plan_und_schlaf(monkeypatch):
+    # Datum festnageln: Die Demodaten hängen vom heutigen Tag ab, und die Mediandifferenz
+    # kann je nach Wochentag-Lage 0 sein (ganzzahlige Scores). Sonst ist der Test tagesabhängig.
+    # ponytail: stabil nur für dieses Datum; Upgrade: stärkerer Demo-Effekt oder Mittelwert.
+    festes_jetzt = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
+    monkeypatch.setattr(timezone, "now", lambda: festes_jetzt)
     from tracking.experiment_views import experiment_ergebnis, experiment_werte
     from tracking.views import _plan_faktor
 
