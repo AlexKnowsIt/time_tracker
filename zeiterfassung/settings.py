@@ -15,6 +15,8 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from .betriebsmodus import erkenne_modus, geheimnis_laden, optionen_laden
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,9 +27,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 DEBUG = os.environ.get("DJANGO_DEBUG", "").lower() in ("1", "true", "yes")
 
+# server (Docker, Standard), homeassistant (Add-on, Ingress) oder desktop (Windows-App)
+ZEITERFASSUNG_MODUS = erkenne_modus()
+DB_PFAD = os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    if not DEBUG:
+    if ZEITERFASSUNG_MODUS != "server":  # Schlüssel neben der Datenbank, beim ersten Start erzeugt
+        SECRET_KEY = geheimnis_laden(Path(DB_PFAD).parent / "secret_key")
+    elif not DEBUG:
         raise ImproperlyConfigured("DJANGO_SECRET_KEY muss gesetzt sein (DJANGO_DEBUG ist aus).")
     SECRET_KEY = "django-insecure-NUR-FUER-ENTWICKLUNG"  # nur bei DEBUG, nie produktiv
 
@@ -84,7 +92,7 @@ WSGI_APPLICATION = "zeiterfassung.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3"),
+        "NAME": DB_PFAD,
         "OPTIONS": {"init_command": "PRAGMA journal_mode=WAL;"},
     }
 }
@@ -156,3 +164,31 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "jetzt"
 LOGOUT_REDIRECT_URL = "login"
+
+
+# Betriebsmodi ohne eigenen Reverse-Proxy. Alles Weitere steht in README und docs/zielbild.md.
+if ZEITERFASSUNG_MODUS == "homeassistant":
+    # Nur der Supervisor erreicht den Container (kein veröffentlichter Port), daher ist jeder
+    # Host-Header unkritisch; ingress.py vertraut Ingress-Headern nur von dessen IP.
+    ALLOWED_HOSTS = ["*"]
+    _optionen = optionen_laden()
+    TIME_ZONE = _optionen["zeitzone"]
+    CSRF_TRUSTED_ORIGINS = _optionen["csrf_trusted_origins"]
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = False  # HA läuft auch über http im LAN
+    X_FRAME_OPTIONS = "SAMEORIGIN"  # HA bettet die App per iframe ein
+    STATIC_URL = "/static/"  # Ingress-Präfix ergänzt die Storage je Anfrage
+    STORAGES["staticfiles"] = {
+        "BACKEND": "zeiterfassung.ingress.IngressStaticFilesStorage"
+        if DEBUG
+        else "zeiterfassung.ingress.IngressManifestStorage"
+    }
+    MIDDLEWARE.insert(1, "zeiterfassung.ingress.IngressMiddleware")
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.contrib.auth.middleware.AuthenticationMiddleware") + 1,
+        "zeiterfassung.ingress.HaAnmeldungMiddleware",
+    )
+elif ZEITERFASSUNG_MODUS == "desktop":
+    # Nur lokal auf 127.0.0.1, ohne Proxy und ohne HTTPS
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = False
+    SECURE_PROXY_SSL_HEADER = None

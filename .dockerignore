@@ -9,3 +9,9 @@ staticfiles
 .pytest_cache
 .ruff_cache
 docs
+desktop
+homeassistant
+deploy
+dist
+build
+out

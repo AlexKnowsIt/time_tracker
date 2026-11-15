@@ -1,0 +1,8 @@
+Zeiterfassung ist installiert.
+
+Ihre Daten (Datenbank und Schlüssel) liegen unter
+%LOCALAPPDATA%\Zeiterfassung
+und bleiben bei einer Deinstallation erhalten. Für ein Backup diesen Ordner kopieren.
+
+Beim ersten Start zeigt Windows SmartScreen evtl. eine Warnung, weil das Programm nicht
+signiert ist: "Weitere Informationen" und dann "Trotzdem ausführen".

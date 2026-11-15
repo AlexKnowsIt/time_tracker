@@ -1,0 +1,25 @@
+name: Zeiterfassung
+slug: zeiterfassung
+version: "0.1.0"
+description: Persönliche Zeiterfassung mit Tagesauswertung (Scores, Muster, Plan vs. Ist)
+url: https://github.com/alexknowsit/time_tracker
+arch:
+  - amd64
+  - aarch64
+# Multi-Arch-Image ohne {arch}-Suffix: Docker holt die passende Variante selbst.
+# Der Tag ist `version`; der Release-Workflow pusht das Image vor dem Versionssprung.
+image: ghcr.io/alexknowsit/time_tracker
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8000
+panel_icon: mdi:timer-outline
+panel_title: Zeiterfassung
+options:
+  zeitzone: Europe/Berlin
+  csrf_trusted_origins: []
+schema:
+  zeitzone: str
+  csrf_trusted_origins:
+    - str

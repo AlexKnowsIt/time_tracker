@@ -7,3 +7,6 @@ db.sqlite3*
 .pytest_cache/
 .vscode/
 staticfiles/
+dist/
+build/
+out/

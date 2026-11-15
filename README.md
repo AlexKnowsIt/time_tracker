@@ -59,6 +59,53 @@ Desktop (ab 900 px Seitenleiste):
   „KI-Assistenten (MCP)“.
 - Auf dem Handy als Web-App installierbar (Manifest). HTMX, FullCalendar und Chart.js (Diagramme in Woche und Muster) kommen per CDN mit fester Version.
 
+## Installation
+
+Drei Wege, alle aus demselben Code. Fertige Pakete entstehen bei jedem
+[Release](https://github.com/alexknowsit/time_tracker/releases) (siehe „Release erstellen“).
+
+### Windows (Installer)
+
+1. `Zeiterfassung-Setup-X.Y.Z.exe` vom neuesten Release herunterladen und ausführen (kein
+   Administrator nötig, Installation für den eigenen Nutzer).
+2. „Zeiterfassung“ im Startmenü starten. Die App öffnet ein eigenes Fenster (Edge WebView2, auf
+   Windows 10/11 vorhanden) und meldet den lokalen Nutzer automatisch an; ein Passwort gibt es
+   nicht. Fenster schließen beendet sie.
+
+Die Daten liegen unter `%LOCALAPPDATA%\Zeiterfassung` (`db.sqlite3`, `secret_key`). Eine
+Deinstallation lässt sie bewusst stehen; für ein Backup den Ordner kopieren. Der Server lauscht nur
+auf `127.0.0.1` an einem zufälligen Port; der Anmelde-Link mit einmaligem Geheimnis kennt nur das
+Fenster, andere Programme auf dem Rechner kommen ohne ihn nicht hinein. Das Programm ist nicht
+signiert: Beim ersten Start zeigt Windows SmartScreen eine Warnung („Weitere Informationen“, dann
+„Trotzdem ausführen“). HTMX, FullCalendar und Chart.js kommen per CDN, die App braucht dafür
+Internet (ohne sind Plan und Diagramme leer).
+
+### Home Assistant (Add-on)
+
+1. Einstellungen, Add-ons, Add-on-Store, Menü oben rechts, **Repositories**:
+   `https://github.com/alexknowsit/time_tracker` hinzufügen.
+2. **Zeiterfassung** installieren, starten, in der Seitenleiste öffnen (Ingress, kein Port).
+
+Angemeldet ist, wer Home Assistant bedienen darf; Optionen (`zeitzone`,
+`csrf_trusted_origins`), Datenablage und Sicherheit stehen in
+[homeassistant/zeiterfassung/DOCS.md](homeassistant/zeiterfassung/DOCS.md). Das Add-on nutzt das
+Image `ghcr.io/alexknowsit/time_tracker:<version>` (amd64 und arm64 in einem Multi-Arch-Manifest,
+darum ohne `{arch}` in `image`). Die Add-on-Version in `config.yaml` setzt der Release-Workflow.
+
+### Server (Docker Compose)
+
+```
+mkdir zeiterfassung && cd zeiterfassung
+# docker-compose.yml vom Release und .env.example (zu .env) herunterladen
+docker compose up -d
+docker compose exec zeiterfassung python manage.py createsuperuser
+docker compose exec zeiterfassung python manage.py standardkategorien <benutzername>
+```
+
+Die Compose-Datei (`deploy/docker-compose.yml`, als Release-Asset mit festem Tag) nutzt das Image
+`ghcr.io/alexknowsit/time_tracker` statt `build: .`; `ZEITERFASSUNG_VERSION=X.Y.Z` legt die
+Version fest. Konfiguration und HTTPS-Hinweise siehe „Docker“ und „Umgebungsvariablen“.
+
 ## Setup lokal
 
 Voraussetzung: [uv](https://docs.astral.sh/uv/).
@@ -169,6 +216,38 @@ noch `W004` (HSTS) und `W008` (SSL-Redirect), beides Aufgabe des Proxys.
 | `DJANGO_ALLOWED_HOSTS` | Kommagetrennte Hostnamen |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Kommagetrennte Ursprünge mit Schema (`https://…`), nur bei Debug aus |
 | `DJANGO_DB_PATH` | Pfad der SQLite-Datei, Standard `db.sqlite3` im Projektordner (Docker: `/data/db.sqlite3`) |
+| `ZEITERFASSUNG_MODUS` | `server` (Standard), `homeassistant` oder `desktop`. Ohne Angabe gilt `homeassistant`, wenn `/data/options.json` existiert. In den beiden anderen Modi entsteht der Schlüssel als Datei `secret_key` neben der Datenbank |
 
 Die CI (`.github/workflows/ci.yml`) führt bei Push und Pull Request auf `main` ruff, pytest und
 die Migrationsprüfung aus.
+
+## Release erstellen
+
+1. Auf `main` prüfen: pytest, ruff und Migrationsprüfung grün (CI).
+2. Auf GitHub ein Release mit Tag `vX.Y.Z` veröffentlichen (Vorabversionen wie `v1.0.0-rc1`
+   gehen auch, bekommen aber weder `:latest` noch einen Add-on-Versionssprung).
+3. Der Workflow `.github/workflows/release.yml` läuft und erzeugt:
+   - Docker-Image `ghcr.io/alexknowsit/time_tracker:X.Y.Z` und `:latest` (linux/amd64 und
+     linux/arm64) und `docker-compose.yml` als Release-Asset,
+   - `Zeiterfassung-Setup-X.Y.Z.exe` als Release-Asset (PyInstaller, Inno Setup, Rauchtest der
+     gebauten App),
+   - einen Commit auf `main` (`[skip ci]`), der `version` in
+     `homeassistant/zeiterfassung/config.yaml` setzt und die Release-Notizen in dessen
+     `CHANGELOG.md` einträgt; danach bietet Home Assistant das Update an.
+4. Die Pakete einmal ausprobieren. Der erste Release braucht, dass das GHCR-Paket auf „public“
+   steht (GitHub, Packages, Paketeinstellungen), sonst kann Home Assistant das Image nicht laden.
+
+Zum Testen ohne Veröffentlichen: Actions, „Release“, „Run workflow“ (Version z. B. `0.0.0-test`).
+Es wird nur gebaut, die Ergebnisse liegen als Workflow-Artifacts an der Ausführung. Der Push auf
+`main` im letzten Schritt braucht Schreibrechte; ein Branchschutz muss dem Actions-Bot den Push
+erlauben.
+
+Windows-App lokal ausprobieren (ohne Fenster, gibt den Anmelde-Link aus):
+
+```
+uv run --group desktop python desktop/start.py --nur-server
+```
+
+Bauen: `DJANGO_SECRET_KEY=x uv run python manage.py collectstatic --noinput`, dann
+`uv run --group desktop pyinstaller desktop/zeiterfassung.spec --noconfirm` und unter Windows
+`iscc /DAppVersion=X.Y.Z desktop\zeiterfassung.iss`.

@@ -1,0 +1,18 @@
+# Server-Betrieb mit dem fertigen Image (GHCR) statt `build: .`.
+# Verwendung: Datei und .env (Vorlage: .env.example im Repo) in einen Ordner legen, dann
+#   docker compose up -d
+#   docker compose exec zeiterfassung python manage.py createsuperuser
+#   docker compose exec zeiterfassung python manage.py standardkategorien <benutzername>
+# Version festlegen: ZEITERFASSUNG_VERSION=1.2.3 docker compose up -d (Standard: latest)
+services:
+  zeiterfassung:
+    image: ghcr.io/alexknowsit/time_tracker:${ZEITERFASSUNG_VERSION:-latest}
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - daten:/data  # SQLite-Datei (DJANGO_DB_PATH=/data/db.sqlite3); Backup = Datei kopieren
+    restart: unless-stopped
+
+volumes:
+  daten:
